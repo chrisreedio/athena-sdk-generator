@@ -1,8 +1,6 @@
 <a href="https://supportukrainenow.org/"><img src="https://raw.githubusercontent.com/vshymanskyy/StandWithUkraine/main/banner-direct.svg" width="100%"></a>
 
 ------
+# Athena SDK Generator
 
-<p align="center">
-    <img title="Athena SDK Generator" height="100" src="hhttps://private-user-images.githubusercontent.com/77644584/287063110-4a83c1ac-0c9b-4bcd-9498-55dc5032de84.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTEiLCJleHAiOjE3MDEzNzY4MTYsIm5iZiI6MTcwMTM3NjUxNiwicGF0aCI6Ii83NzY0NDU4NC8yODcwNjMxMTAtNGE4M2MxYWMtMGM5Yi00YmNkLTk0OTgtNTVkYzUwMzJkZTg0LnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFJV05KWUFYNENTVkVINTNBJTJGMjAyMzExMzAlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjMxMTMwVDIwMzUxNlomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPWM3OWFlMWJiMjA2MzIwMjljNzA1ZGU4NDZlYjZlZGE5NGZhYzkzN2RjNjMxODQwOTYxNGQxZTI3NmM3NjI2NTEmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0JmFjdG9yX2lkPTAma2V5X2lkPTAmcmVwb19pZD0wIn0.lGdgHjblYytobBgGSPfVr27sB48BZqBN6KSgzayIDoM" />
-</p>
-
+![Athena SDK Generator](https://github.com/chrisreedio/athena-sdk-generator/assets/77644584/190ee32a-970d-43da-a114-46f567d2b039)
