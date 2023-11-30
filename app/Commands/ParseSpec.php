@@ -6,9 +6,13 @@ use Crescat\SaloonSdkGenerator\CodeGenerator;
 use Crescat\SaloonSdkGenerator\Data\Generator\Config;
 use Crescat\SaloonSdkGenerator\Exceptions\ParserNotRegisteredException;
 use Crescat\SaloonSdkGenerator\Factory;
+use Crescat\SaloonSdkGenerator\Helpers\Utils;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 use LaravelZero\Framework\Commands\Command;
+use Nette\PhpGenerator\PhpFile;
 
 class ParseSpec extends Command
 {
@@ -25,6 +29,8 @@ class ParseSpec extends Command
      * @var string
      */
     protected $description = 'Parse a spec file and generate a test file.';
+
+    protected string $namespace = 'ChrisReedIO\\AthenaSDK';
 
     /**
      * Execute the console command.
@@ -59,8 +65,8 @@ class ParseSpec extends Command
     protected function generateSdk(string $specPath)
     {
         $config = new Config(
-            connectorName: 'MySDK',
-            namespace: "App\Sdk",
+            connectorName: 'AthenaConnector',
+            namespace: $this->namespace,
             resourceNamespaceSuffix: 'Resource',
             requestNamespaceSuffix: 'Requests',
             dtoNamespaceSuffix: 'Dto', // Replace with your desired SDK name
@@ -70,12 +76,66 @@ class ParseSpec extends Command
         $generator = new CodeGenerator($config);
         try {
             $result = $generator->run(Factory::parse('openapi', $specPath));
+
+            // Generated Connector Class
+            echo "Generated Connector Class: " . Utils::formatNamespaceAndClass($result->connectorClass) . "\n";
+            $this->dumpToFile($result->connectorClass);
+            // dd($result->connectorClass);
+
+            // Generated Base Resource Class
+            echo "Generated Base Resource Class: " . Utils::formatNamespaceAndClass($result->resourceBaseClass) . "\n";
+            $this->dumpToFile($result->resourceBaseClass);
+
+            // Generated Resource Classes
+            foreach ($result->resourceClasses as $resourceClass) {
+                echo "Generated Resource Class: " . Utils::formatNamespaceAndClass($resourceClass) . "\n";
+                $this->dumpToFile($resourceClass);
+            }
+
+            // Generated Request Classes
+            foreach ($result->requestClasses as $requestClass) {
+                echo "Generated Request Class: " . Utils::formatNamespaceAndClass($requestClass) . "\n";
+                $this->dumpToFile($requestClass);
+            }
         } catch (ParserNotRegisteredException $e) {
             $this->error("Parser not registered: {$e->getMessage()}");
             return self::FAILURE;
         }
 
         return self::SUCCESS;
+    }
+
+    protected function dumpToFile(PhpFile $file): void
+    {
+        $outputDir = 'output';
+        // TODO: Cleanup this, brittle and will break if you change the namespace
+        $wip = sprintf(
+            '%s/%s/%s.php',
+            // $this->option('output'),
+            $outputDir,
+            str_replace($this->namespace, '', Arr::first($file->getNamespaces())->getName()),
+            Arr::first($file->getClasses())->getName(),
+        );
+
+        $filePath = Str::of($wip)->replace('\\', '/')->replace('//', '/')->toString();
+
+        if (! file_exists(dirname($filePath))) {
+            mkdir(dirname($filePath), recursive: true);
+        }
+
+        if (file_exists($filePath) && ! $this->option('force')) {
+            $this->warn("- File already exists: $filePath");
+
+            return;
+        }
+
+        $ok = file_put_contents($filePath, (string) $file);
+
+        if ($ok === false) {
+            $this->error("- Failed to write: $filePath");
+        } else {
+            $this->line("- Created: $filePath");
+        }
     }
 
     /**
