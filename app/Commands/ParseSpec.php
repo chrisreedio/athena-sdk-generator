@@ -74,6 +74,8 @@ class ParseSpec extends Command
             $this->error("Parser not registered: {$e->getMessage()}");
             return self::FAILURE;
         }
+
+        return self::SUCCESS;
     }
 
     /**
