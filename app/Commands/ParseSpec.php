@@ -21,7 +21,7 @@ class ParseSpec extends Command
      *
      * @var string
      */
-    protected $signature = 'spec:parse {spec : The spec file to parse.}';
+    protected $signature = 'spec:parse {spec : The spec file to parse.} {--force : Overwrite existing files.}';
 
     /**
      * The description of the command.
