@@ -3,6 +3,7 @@
 namespace App\Commands;
 
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Support\Facades\Cache;
 use LaravelZero\Framework\Commands\Command;
 
 class ParseSpec extends Command
@@ -12,7 +13,7 @@ class ParseSpec extends Command
      *
      * @var string
      */
-    protected $signature = 'parse-spec {spec}';
+    protected $signature = 'spec:parse {spec : The spec file to parse.}';
 
     /**
      * The description of the command.
@@ -28,9 +29,25 @@ class ParseSpec extends Command
      */
     public function handle()
     {
+        $specPath = Cache::get('spec:path');
+        if (!$specPath) {
+            $this->error('No spec path set.');
+            return self::FAILURE;
+        }
+
         $spec = $this->argument('spec');
-        $this->info("Parsing spec file: $spec");
-        $this->info("Generating test file: $spec");
+        $filename = $spec . '.json';
+        $fullSpecPath = $specPath . '/' . $filename;
+
+        $this->info("Parsing spec file: $fullSpecPath");
+        $this->info("Generating test file: output/$spec");
+
+        if (!file_exists($fullSpecPath)) {
+            $this->error("Spec file not found: $fullSpecPath");
+            return self::FAILURE;
+        }
+
+        return self::SUCCESS;
     }
 
     /**
