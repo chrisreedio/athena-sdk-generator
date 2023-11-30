@@ -2,6 +2,10 @@
 
 namespace App\Commands;
 
+use Crescat\SaloonSdkGenerator\CodeGenerator;
+use Crescat\SaloonSdkGenerator\Data\Generator\Config;
+use Crescat\SaloonSdkGenerator\Exceptions\ParserNotRegisteredException;
+use Crescat\SaloonSdkGenerator\Factory;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Cache;
 use LaravelZero\Framework\Commands\Command;
@@ -47,13 +51,35 @@ class ParseSpec extends Command
             return self::FAILURE;
         }
 
+        $this->generateSdk($fullSpecPath);
+
         return self::SUCCESS;
+    }
+
+    protected function generateSdk(string $specPath)
+    {
+        $config = new Config(
+            connectorName: 'MySDK',
+            namespace: "App\Sdk",
+            resourceNamespaceSuffix: 'Resource',
+            requestNamespaceSuffix: 'Requests',
+            dtoNamespaceSuffix: 'Dto', // Replace with your desired SDK name
+            // outputFolder: './Generated', // Replace with your desired output folder
+            ignoredQueryParams: ['after', 'order_by', 'per_page'] // Ignore params used for pagination
+        );
+        $generator = new CodeGenerator($config);
+        try {
+            $result = $generator->run(Factory::parse('openapi', $specPath));
+        } catch (ParserNotRegisteredException $e) {
+            $this->error("Parser not registered: {$e->getMessage()}");
+            return self::FAILURE;
+        }
     }
 
     /**
      * Define the command's schedule.
      *
-     * @param  \Illuminate\Console\Scheduling\Schedule  $schedule
+     * @param \Illuminate\Console\Scheduling\Schedule $schedule
      * @return void
      */
     public function schedule(Schedule $schedule): void
