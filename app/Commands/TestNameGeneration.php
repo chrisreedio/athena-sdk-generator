@@ -6,7 +6,7 @@ use App\Classes\RequestNameGenerator;
 use Illuminate\Console\Scheduling\Schedule;
 use LaravelZero\Framework\Commands\Command;
 use function dump;
-use function Laravel\Prompts\{table, intro, warning, info, error};
+use function Laravel\Prompts\{outro, table, intro, warning, info, error};
 
 class TestNameGeneration extends Command
 {
@@ -34,12 +34,13 @@ class TestNameGeneration extends Command
         $endpointData = $this->testData();
 
         // Slice the array to only include the first 2 items
-        $endpointData = array_slice($endpointData, 0, 2);
+        $endpointData = array_slice($endpointData, 0, 3);
 
         intro('Generating Request Names...');
         $response = RequestNameGenerator::collection($endpointData);
-        dump($response);
-        table(['Method', 'Path', 'Request Class Name'], $response);
+        // dump($response);
+        outro('Generated Request Names');
+        table(['Method', 'Path', 'Summary', 'Request Class Name'], $response);
     }
 
     protected function testData(): array
