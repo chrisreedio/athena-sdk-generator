@@ -34,7 +34,7 @@ class TestNameGeneration extends Command
         $endpointData = $this->testData();
 
         // Slice the array to only include the first 2 items
-        $endpointData = array_slice($endpointData, 0, 3);
+        $endpointData = array_slice($endpointData, 0, 6);
 
         intro('Generating Request Names...');
         $response = RequestNameGenerator::collection($endpointData);
