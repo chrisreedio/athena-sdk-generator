@@ -78,15 +78,15 @@ class RequestNameGenerator
         warning($unknownCount . ' ' . Str::plural('endpoint', $unknownCount) . ' are not cached. We\'ll need to query OpenAI.');
         // table(['Method', 'Path', 'Summary'], $unknownEndpoints->all());
 
+        $response = [];
         // Query OpenAI
         $response = static::query($unknownEndpoints->all());
-        dump('Response: ', $response);
+        // dump('Response: ', $response);
 
         // Cache the returned items
         // collect($response)->each(function ($item) {
         //     Cache::put(static::endpointCacheKey($item), $item['class']);
         // });
-        $response = [ ];
         try {
             $response = collect($response)->map(function ($item) use ($endpoints) {
                 // dump('Caching: ', $item);
@@ -108,6 +108,11 @@ class RequestNameGenerator
             alert('Error parsing response: ' . $e->getMessage());
             dd('Error parsing response: ', $e->getMessage());
         }
+        // info('cached endpoints');
+        // table(['Method', 'Path', 'Summary', 'Class'], $cachedEndpoints);
+        //
+        // info('response endpoints');
+        // table(['Method', 'Path', 'Summary', 'Class'], $response);
 
         return [...$cachedEndpoints, ...$response];
     }
@@ -130,29 +135,37 @@ class RequestNameGenerator
             ['role' => 'user', 'content' => $encodedContent],
         ];
 
-        $contentPretty = json_encode($content,  JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
-        intro('Sending these messages to OpenAI...');
-        info('<fg=yellow>System</>: ' . $messages[0]['content']);
-        info('<fg=green>User</>: ' . $contentPretty);
+        // $contentPretty = json_encode($content,  JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        // intro('Sending these messages to OpenAI...');
+        // info('<fg=yellow>System</>: ' . $messages[0]['content']);
+        // info('<fg=green>User</>: ' . $contentPretty);
 
         $model = GPTModel::GPT35Turbo;
-        $model = GPTModel::GPT4Turbo;
+        // $model = GPTModel::GPT4Turbo;
 
         $chatOptions = [
             'model' => $model->openAI(),
-            // 'model' => 'gpt-4',
-            // 'model' => 'gpt-4-1106-preview', // GPT-4 Turbo
-            // 'model' => 'gpt-3.5-turbo-1106', // GPT-3.5 Turbo
-            // 'response_format' => 'json_object',
             'response_format' => ['type' => 'json_object'],
-            // 'request_timeout' => 15,
             'temperature' => 0.2,
             'messages' => $messages,
         ];
-
+        $tokenCount = 0;
         try {
-            $result = spin(fn() => $client->chat()->create($chatOptions),
-                'Querying <fg=white>OpenAI</>: <fg=' . $model->getColor() . '>' . $model->getLabel() . '</>. Please wait...');
+            // $result = spin(function () use ($client, $chatOptions) {
+            //     return $client->chat()->create($chatOptions);
+            // }, 'Querying <fg=white>OpenAI</>: <fg=' . $model->getColor() . '>' . $model->getLabel() . '</>. Please wait...');
+            info('Querying <fg=white>OpenAI</>: <fg=' . $model->getColor() . '>' . $model->getLabel() . '</>');
+            $stream = $client->chat()->createStreamed($chatOptions);
+            $tempResponse = '';
+            foreach ($stream as $response) {
+                // dump($response);
+                $chunk = $response->choices[0]->delta->content;
+                echo $chunk;
+                $tempResponse .= $chunk;
+            }
+            echo "\n";
+            info('Finished querying <fg=white>OpenAI</>: <fg=' . $model->getColor() . '>' . $model->getLabel() . '</>');
+            $result = $tempResponse;
         } catch (\GuzzleHttp\Exception\ConnectException $e) {
             dd('Error connecting to OpenAI: ' . $e->getMessage());
             // return [];
@@ -165,16 +178,21 @@ class RequestNameGenerator
             // alert('')
             return [];
         }
+        // dd($result);
 
-        $response = $result->choices[0]->message->content;
+        // $response = $result->choices[0]->message->content;
+        $response = $result;
+        // dump("Raw Response: \n" . $response);
         $response = json_decode($response, true);
-        dump('Raw Response: ', $response);
+        // dump('Parsed Response: ', $response);
 
         // Extract the data if wrapped
         if (array_key_exists('endpoints', $response)) {
             $response = array_values($response['endpoints']);
+        } else if (array_key_exists('response', $response)) {
+            $response = array_values($response['response']);
         }
-        dump('Extracted Response: ', $response);
+        // dump('Extracted Response: ', $response);
 
         // Check if it's not an array or if it's an associative array (single object)
         // Wrap the single object associative array in an array if it isn't a proper array
@@ -189,12 +207,16 @@ class RequestNameGenerator
     protected static function systemPrompt(): string
     {
         $promptParts = [
-            // 'You are a expert backend engineer that has designed REST APIs for decades.',
-            // 'As a result, you are an expert an categorizing APIs and naming SDK methods.',
+            // 'You are an expert backend engineer that has designed REST APIs for decades.',
+            // 'As a result, you are an expert a categorizing APIs and naming SDK methods.',
             'Convert the given JSON array of endpoint objects (consisting of the endpoint\'s method, path, and a summary of what the API endpoint does into a PHP safe studly case name.',
             'Please make the names descriptive, yet concise.',
-            'The only output fields should be the method, path, and class.',
-            'It is critical that you include every request in the output. The output should be an array of endpoint objects.',
+            'If the request for fetching a list of items, use the prefix "List" instead of "Get".',
+            'Be consistent with the naming conventions. Using words like "Get" instead of "Retrieve".',
+            'Use standardized and consistent class prefixes like "Create", "List", "Get", "Update", and "Delete".',
+            'The only output fields should be the method, path, and class. Please return JSON output.',
+            'Include a response item for every item in the input array.',
+            'The output should be an array of endpoint objects.',
             // 'Do not assign a root key to the output.',
         ];
         return collect($promptParts)->join("\n");
