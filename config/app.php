@@ -84,5 +84,8 @@ return [
     ],
     'cache' => [
         'prefix' => 'generate-endpoint-name',
+        'tags' => [
+            'spec:generated:name',
+        ],
     ]
 ];

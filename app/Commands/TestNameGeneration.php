@@ -32,9 +32,12 @@ class TestNameGeneration extends Command
     public function handle(): void
     {
         $endpointData = $this->testData();
+
+        // Slice the array to only include the first 2 items
+        $endpointData = array_slice($endpointData, 0, 2);
+
         intro('Generating Request Names...');
         $response = RequestNameGenerator::collection($endpointData);
-        $response = json_decode($response, true);
         dump($response);
         table(['Method', 'Path', 'Request Class Name'], $response);
     }

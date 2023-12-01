@@ -94,7 +94,7 @@ class SpecFile
 
     protected static function dumpToFile(PhpFile $file): void
     {
-        $outputRootDir = 'output';
+        $outputRootDir = config('app.output.path');
         // dd($file);
         $outputPath = ltrim(str_replace(static::$namespace, '', Arr::first($file->getNamespaces())->getName()), '\\');
         $outputPath = str_replace('\\', DIRECTORY_SEPARATOR, $outputPath);

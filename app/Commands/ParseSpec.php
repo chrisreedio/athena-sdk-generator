@@ -52,7 +52,7 @@ class ParseSpec extends Command
 
     protected function initializeSpecPath(): void
     {
-        $this->specPath = Cache::get('spec:path');
+        $this->specPath = Cache::get('spec:path') ?? config('app.spec.path');
         if (!$this->specPath) {
             $this->error('No spec path set.');
             $this->specPath = null;
