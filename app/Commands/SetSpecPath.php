@@ -34,14 +34,15 @@ class SetSpecPath extends Command
             // $path = Cache::put('spec:path', $path)
             $path = Cache::get('spec:path');
             if (!$path) {
-                $this->error('No spec path set.');
+                $this->error('No spec path override set.');
+                $this->warn('Will fall back to the default: ' . config('app.spec.path'));
                 return self::FAILURE;
             }
-            $this->info("Spec path is: $path");
+            $this->info("Spec path override is: $path");
             return self::SUCCESS;
         }
 
-        $this->info("Setting spec path to: $path");
+        $this->info("Setting spec path override to: $path");
         Cache::put('spec:path', $path);
         return self::SUCCESS;
     }

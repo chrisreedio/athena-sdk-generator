@@ -70,4 +70,19 @@ return [
         App\Providers\AppServiceProvider::class,
     ],
 
+    // Spec Data for the SDK Generator
+    'spec' => [
+        'path' => env('SPEC_PATH', '/home/chris/dev/scratch/athena_openapi_specs'),
+        'namespace' => 'ChrisReedIO\\AthenaSDK',
+        'resourceNamespaceSuffix' => 'Resource',
+        'requestNamespaceSuffix' => 'Requests',
+        'dtoNamespaceSuffix' => 'Dto',
+        'ignoredQueryParams' => ['limit', 'offset'],
+    ],
+    'output' => [
+        'path' => env('OUTPUT_PATH', 'output'),
+    ],
+    'cache' => [
+        'prefix' => 'generate-endpoint-name',
+    ]
 ];
