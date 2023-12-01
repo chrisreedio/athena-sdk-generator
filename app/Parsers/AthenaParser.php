@@ -57,7 +57,6 @@ class AthenaParser extends OpenApiParser
         $paths = [];
         $category = null;
         // Find the category from the first item - strip off /v1/ then the next part of the url is the category
-        // dd('BIG FACTS: ', array_keys($items->getPaths()));
 
         foreach ($items as $path => $item) {
             // info('Athena Parser - path: ' . $path)
