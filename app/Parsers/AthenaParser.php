@@ -18,6 +18,7 @@ use Crescat\SaloonSdkGenerator\Data\Generator\Method;
 use Crescat\SaloonSdkGenerator\Data\Generator\Parameter;
 use Crescat\SaloonSdkGenerator\Parsers\OpenApiParser;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use function array_slice;
 use function Laravel\Prompts\{info, warning, error, table};
@@ -32,9 +33,6 @@ use const JSON_UNESCAPED_SLASHES;
 
 class AthenaParser extends OpenApiParser
 {
-    public array $paths = [];
-    public array $endpoints = [];
-
     public static function build($content): self
     {
         return new self(
@@ -49,22 +47,23 @@ class AthenaParser extends OpenApiParser
         // Generate list of paths
         $paths = $this->parseItems($this->openApi->paths);
 
-        // Now we need to scan this list of endpoints and ensure that there is a cached OpenAI ClassName for each one
-
-        // dump('paths: ');
-        $paths = Arr::flatten($paths, 1);
         // echo(json_encode($paths, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n");
-        // $paths = array_slice($paths, 0, 15);
+
         $response = RequestNameGenerator::collection($paths);
         // dd($response);
         table(['Method', 'Path', 'Summary', 'Request Class Name'], $response);
-        dd('done');
+
+        // Now we need to scan this list of endpoints and ensure that there is a cached OpenAI ClassName for each one
+        $endpoints = $this->parseEndpoints($this->openApi->paths);
+
+        // dd('done');
 
         return new ApiSpecification(
             name: $this->openApi->info->title,
             description: $this->openApi->info->description,
             baseUrl: Arr::first($this->openApi->servers)->url,
-            endpoints: $this->parseItems($this->openApi->paths)
+            // endpoints: $this->parseItems($this->openApi->paths)
+            endpoints: $endpoints,
         );
     }
 
@@ -73,8 +72,8 @@ class AthenaParser extends OpenApiParser
      */
     protected function parseItems(Paths $items): array
     {
-        $requests = [];
-        $tableData = [];
+        // $requests = [];
+        // $tableData = [];
         $paths = [];
         // $category = null;
         // Find the category from the first item - strip off /v1/ then the next part of the url is the category
@@ -119,7 +118,7 @@ class AthenaParser extends OpenApiParser
         //     'Summary',
         // ], $tableData);
         // info("Paths: \n" . collect($paths)->join("\n"));
-        return $paths;
+        return Arr::flatten($paths, 1);
     }
 
     protected function parseItem(string $path, PathItem $item): array
@@ -145,15 +144,39 @@ class AthenaParser extends OpenApiParser
         return $paths;
     }
 
+    protected function parseEndpoints(Paths $items): array
+    {
+        $endpoints = [];
+        foreach ($items as $path => $item) {
+            if ($item instanceof PathItem) {
+                foreach ($item->getOperations() as $method => $operation) {
+                    // Grab this endpoint's class name from the cache
+                    // dd(RequestNameGenerator::endpointCacheKey($path, $item);
+                    $endpoints[] = $this->parseEndpoint($operation, $this->mapParams($item->parameters, 'path'), $path, $method);
+                }
+            }
+        }
+        return $endpoints;
+    }
+
     protected function parseEndpoint(Operation $operation, $pathParams, string $path, string $method): ?Endpoint
     {
         // dump('Athena Parser - parseEndpoint');
         // $trimmedPath = str_replace('/v1/', '', $path);
         // \Laravel\Prompts\info("<fg=magenta>$method</>\t<fg=blue>$trimmedPath</> <fg=cyan>{$operation->operationId}</>");
         // dd($operation);
+        $trimmedPath = str_replace('/v1/{practiceid}', '', $path);
+        $classCacheKey = RequestNameGenerator::endpointCacheKey(['path' => $trimmedPath, 'method' => $method]);
+        $className = Cache::get($classCacheKey);
+
+        // dump('Path: ' . $trimmedPath);
+        // dump('Cache Key: ' . $classCacheKey);
+        // dump('Class Name: ' . $className);
+        info("Endpoint: [$method] $path = " . ($className ?? ''));
 
         return new Endpoint(
-            name: trim($operation->operationId ?: $operation->summary ?: ''),
+            // name: trim($operation->operationId ?: $operation->summary ?: ''),
+            name: trim($className ?? ''),
             method: Method::parse($method),
             pathSegments: Str::of($path)->replace('{', ':')->remove('}')->trim('/')->explode('/')->toArray(),
             collection: $operation->tags[0] ?? null, // In the real-world, people USUALLY only use one tag...

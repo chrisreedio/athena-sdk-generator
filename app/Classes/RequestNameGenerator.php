@@ -8,6 +8,7 @@ use Illuminate\Support\Str;
 use JetBrains\PhpStorm\Deprecated;
 use OpenAI;
 use function array_key_exists;
+use function array_keys;
 use function array_values;
 use function collect;
 use function config;
@@ -19,6 +20,8 @@ use function json_decode;
 use function json_encode;
 use function key;
 use function Laravel\Prompts\{alert, outro, spin, table, intro, warning, info, error};
+use function microtime;
+use function round;
 use function serialize;
 use function sha1;
 use function stripcslashes;
@@ -41,9 +44,6 @@ class RequestNameGenerator
         // If it is, then don't send it to OpenAI
         // If it isn't, then send it to OpenAI and cache the result
         // Then return the entire array of results
-        info('Requested Endpoints: ');
-        // table(['Method', 'Path', 'Summary'], $endpoints);
-
         $endPointStatuses = collect($endpoints)->map(function ($endpoint) {
             $className = Cache::get(static::endpointCacheKey($endpoint));
             return [
@@ -51,8 +51,9 @@ class RequestNameGenerator
                 'cached' => $className !== null ? "<fg=green>$className</>" : '<fg=red>❌</>',
             ];
         })->toArray();
+
+        info('Requested Endpoints: ');
         table(['Method', 'Path', 'Summary', 'Cached Class Name'], $endPointStatuses);
-        // dump($endpoints);
 
         // info('Filtering out endpoints that are cached...');
         [$cachedEndpoints, $unknownEndpoints] = collect($endpoints)->partition(function ($endpoint) {
@@ -91,7 +92,9 @@ class RequestNameGenerator
             $response = collect($response)->map(function ($item) use ($endpoints) {
                 // dump('Caching: ', $item);
                 $item['path'] = stripcslashes($item['path']);
-                Cache::put(static::endpointCacheKey($item), $item['class']);
+                $cacheKey = static::endpointCacheKey($item);
+                // dump('Caching: ' . $cacheKey);
+                Cache::put($cacheKey, $item['class']);
                 // dump('Looking for path: ' . $item['path']);
                 $originalEndpoint = collect($endpoints)->firstWhere('path', $item['path']);
                 // dd('Original Endpoint: ', $originalEndpoint);
@@ -129,7 +132,6 @@ class RequestNameGenerator
             ->make();
 
         $encodedContent = json_encode($content, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-        // $encodedContent = json_encode($content);
         $messages = [
             ['role' => 'system', 'content' => self::systemPrompt()],
             ['role' => 'user', 'content' => $encodedContent],
@@ -149,42 +151,13 @@ class RequestNameGenerator
             'temperature' => 0.2,
             'messages' => $messages,
         ];
-        $tokenCount = 0;
-        try {
-            // $result = spin(function () use ($client, $chatOptions) {
-            //     return $client->chat()->create($chatOptions);
-            // }, 'Querying <fg=white>OpenAI</>: <fg=' . $model->getColor() . '>' . $model->getLabel() . '</>. Please wait...');
-            $startTime = microtime(true);
-            // info('Querying <fg=white>OpenAI</>: <fg=' . $model->getColor() . '>' . $model->getLabel() . '</>');
-            $stream = $client->chat()->createStreamed($chatOptions);
-            $result = spin(function () use ($stream, $chatOptions) {
-                $tempResponse = '';
-                foreach ($stream as $response) {
-                    // dump($response);
-                    $chunk = $response->choices[0]->delta->content;
-                    // echo $chunk;
-                    $tempResponse .= $chunk;
-                }
-                // $result = $tempResponse;
-                return $tempResponse;
-                // echo "\n";
-            }, 'Querying <fg=white>OpenAI</>: <fg=' . $model->getColor() . '>' . $model->getLabel() . '</>. Please wait...');
-            $totalTime = round(microtime(true) - $startTime, 2);
-            info('<fg=white>OpenAI</> <fg=' . $model->getColor() . '>' . $model->getLabel() . '</> query took ' . $totalTime . ' seconds');
 
-        } catch (\GuzzleHttp\Exception\ConnectException $e) {
-            dd('Error connecting to OpenAI: ' . $e->getMessage());
-            // return [];
-        } catch (\OpenAI\Exceptions\TransporterException $e) {
-            dd('Error querying OpenAI: ' . $e->getMessage());
-            // return [];
-        } catch (\Exception $e) {
-            // alert('Error querying OpenAI: ' . $e->getMessage());
-            dd($e);
-            // alert('')
-            return [];
-        }
-        // dd($result);
+        $tokenCount = 0;
+
+        info('Querying <fg=white>OpenAI</>: <fg=' . $model->getColor() . '>' . $model->getLabel() . '</>');
+        $stream = $client->chat()->createStreamed($chatOptions);
+        $result = static::executeQuery($stream);
+
 
         // $response = $result->choices[0]->message->content;
         $response = $result;
@@ -192,6 +165,50 @@ class RequestNameGenerator
         $response = json_decode($response, true);
         // dump('Parsed Response: ', $response);
 
+        return static::cleanResponse($response);
+    }
+
+    private static function executeQuery(OpenAI\Responses\StreamResponse $stream): ?string
+    {
+        try {
+            // $result = spin(function () use ($client, $chatOptions) {
+            //     return $client->chat()->create($chatOptions);
+            // }, 'Querying <fg=white>OpenAI</>: <fg=' . $model->getColor() . '>' . $model->getLabel() . '</>. Please wait...');
+            $startTime = microtime(true);
+            // info('Querying <fg=white>OpenAI</>: <fg=' . $model->getColor() . '>' . $model->getLabel() . '</>');
+            // $stream = $client->chat()->createStreamed($chatOptions);
+            $result = '';
+            $result = spin(function () use ($stream, &$result) {
+                foreach ($stream as $response) {
+                    $chunk = $response->choices[0]->delta->content;
+                    // echo $chunk;
+                    $result .= $chunk;
+                }
+                return $result;
+                // echo "\n";
+            }, 'Executing AI Query. Please wait...');
+
+            $totalTime = round(microtime(true) - $startTime, 2);
+            info('Query took ' . $totalTime . ' seconds');
+            return $result;
+
+        } catch (\GuzzleHttp\Exception\ConnectException $e) {
+            alert('Error connecting to OpenAI: ' . $e->getMessage());
+            // return [];
+        } catch (\OpenAI\Exceptions\TransporterException $e) {
+            alert('Error querying OpenAI: ' . $e->getMessage());
+            // return [];
+        } catch (\Exception $e) {
+            alert('Error querying OpenAI: ' . $e->getMessage());
+            // dd($e);
+            // alert('')
+            // return [];
+        }
+        return null;
+    }
+
+    private static function cleanResponse(array $response): array
+    {
         // Extract the data if wrapped
         if (array_key_exists('endpoints', $response)) {
             $response = array_values($response['endpoints']);
@@ -202,7 +219,7 @@ class RequestNameGenerator
 
         // Check if it's not an array or if it's an associative array (single object)
         // Wrap the single object associative array in an array if it isn't a proper array
-        if (!is_array($response) || !is_numeric(array_keys($response)[0])) {
+        if (!is_numeric(array_keys($response)[0])) {
             $response = [$response];
         }
 
@@ -226,13 +243,14 @@ class RequestNameGenerator
             // 'Do not assign a root key to the output.',
         ];
         return collect($promptParts)->join("\n");
-        // return "You are a expert software analysis assistant. You're are an expert an classifying APIs and generating SDKs from API concepts. Convert a given JSON input that is the endpoint's method, path, and a summary of what the API call does. Generate JSON output that is a safe PHP classname for each request. Only include the method, path, and class in the output.";
+        // return "You are an expert software analysis assistant. You're an expert a classifying APIs and generating SDKs from API concepts. Convert a given JSON input that is the endpoint's method, path, and a summary of what the API call does. Generate JSON output that is a safe PHP classname for each request. Only include the method, path, and class in the output.";
     }
 
     public static function endpointCacheKey(array $endpoint): string
     {
         // Filter the endpoint array to only include the 'method' and 'path' keys
-        $filteredEndpoint = collect($endpoint)->only(['method', 'path'])->toArray();
-        return config('app.cache.prefix') . ':' . sha1(serialize($filteredEndpoint));
+        // $filteredEndpoint = collect($endpoint)->only(['method', 'path'])->toArray();
+        // return config('app.cache.prefix') . ':' . sha1(serialize($filteredEndpoint));
+        return config('app.cache.prefix') . ':' . $endpoint['method'] . ':' . $endpoint['path'];
     }
 }

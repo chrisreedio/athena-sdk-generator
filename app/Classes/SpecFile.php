@@ -56,25 +56,25 @@ class SpecFile
         $generator = new CodeGenerator($config);
         try {
             $spec = Factory::parse('athena', $specPath);
-            dd('done');
+            // dd('done');
             // dump('Spec:');
             // dd($spec);
             $result = $generator->run($spec);
 
             // Generated Connector Class
-            // echo "Generated Connector Class: " . Utils::formatNamespaceAndClass($result->connectorClass) . "\n";
-            // $this->dumpToFile($result->connectorClass);
+            echo "Generated Connector Class: " . Utils::formatNamespaceAndClass($result->connectorClass) . "\n";
+            static::dumpToFile($result->connectorClass);
             // dd($result->connectorClass);
 
             // Generated Base Resource Class
-            // echo "Generated Base Resource Class: " . Utils::formatNamespaceAndClass($result->resourceBaseClass) . "\n";
-            // $this->dumpToFile($result->resourceBaseClass);
+            echo "Generated Base Resource Class: " . Utils::formatNamespaceAndClass($result->resourceBaseClass) . "\n";
+            static::dumpToFile($result->resourceBaseClass);
 
             // Generated Resource Classes
-            // foreach ($result->resourceClasses as $resourceClass) {
-            //     echo "Generated Resource Class: " . Utils::formatNamespaceAndClass($resourceClass) . "\n";
-            //     $this->dumpToFile($resourceClass);
-            // }
+            foreach ($result->resourceClasses as $resourceClass) {
+                echo "Generated Resource Class: " . Utils::formatNamespaceAndClass($resourceClass) . "\n";
+                static::dumpToFile($resourceClass);
+            }
 
             // Generated Request Classes
             $i = 0;
