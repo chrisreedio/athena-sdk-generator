@@ -141,7 +141,7 @@ class RequestNameGenerator
         // info('<fg=green>User</>: ' . $contentPretty);
 
         $model = GPTModel::GPT35Turbo;
-        // $model = GPTModel::GPT4Turbo;
+        $model = GPTModel::GPT4Turbo;
 
         $chatOptions = [
             'model' => $model->openAI(),
@@ -154,18 +154,24 @@ class RequestNameGenerator
             // $result = spin(function () use ($client, $chatOptions) {
             //     return $client->chat()->create($chatOptions);
             // }, 'Querying <fg=white>OpenAI</>: <fg=' . $model->getColor() . '>' . $model->getLabel() . '</>. Please wait...');
-            info('Querying <fg=white>OpenAI</>: <fg=' . $model->getColor() . '>' . $model->getLabel() . '</>');
+            $startTime = microtime(true);
+            // info('Querying <fg=white>OpenAI</>: <fg=' . $model->getColor() . '>' . $model->getLabel() . '</>');
             $stream = $client->chat()->createStreamed($chatOptions);
-            $tempResponse = '';
-            foreach ($stream as $response) {
-                // dump($response);
-                $chunk = $response->choices[0]->delta->content;
-                echo $chunk;
-                $tempResponse .= $chunk;
-            }
-            echo "\n";
-            info('Finished querying <fg=white>OpenAI</>: <fg=' . $model->getColor() . '>' . $model->getLabel() . '</>');
-            $result = $tempResponse;
+            $result = spin(function () use ($stream, $chatOptions) {
+                $tempResponse = '';
+                foreach ($stream as $response) {
+                    // dump($response);
+                    $chunk = $response->choices[0]->delta->content;
+                    // echo $chunk;
+                    $tempResponse .= $chunk;
+                }
+                // $result = $tempResponse;
+                return $tempResponse;
+                // echo "\n";
+            }, 'Querying <fg=white>OpenAI</>: <fg=' . $model->getColor() . '>' . $model->getLabel() . '</>. Please wait...');
+            $totalTime = round(microtime(true) - $startTime, 2);
+            info('<fg=white>OpenAI</> <fg=' . $model->getColor() . '>' . $model->getLabel() . '</> query took ' . $totalTime . ' seconds');
+
         } catch (\GuzzleHttp\Exception\ConnectException $e) {
             dd('Error connecting to OpenAI: ' . $e->getMessage());
             // return [];
@@ -210,7 +216,7 @@ class RequestNameGenerator
             // 'You are an expert backend engineer that has designed REST APIs for decades.',
             // 'As a result, you are an expert a categorizing APIs and naming SDK methods.',
             'Convert the given JSON array of endpoint objects (consisting of the endpoint\'s method, path, and a summary of what the API endpoint does into a PHP safe studly case name.',
-            'Please make the names descriptive, yet concise.',
+            'Please make the class names as concise as possible.',
             'If the request for fetching a list of items, use the prefix "List" instead of "Get".',
             'Be consistent with the naming conventions. Using words like "Get" instead of "Retrieve".',
             'Use standardized and consistent class prefixes like "Create", "List", "Get", "Update", and "Delete".',
@@ -223,7 +229,7 @@ class RequestNameGenerator
         // return "You are a expert software analysis assistant. You're are an expert an classifying APIs and generating SDKs from API concepts. Convert a given JSON input that is the endpoint's method, path, and a summary of what the API call does. Generate JSON output that is a safe PHP classname for each request. Only include the method, path, and class in the output.";
     }
 
-    protected static function endpointCacheKey(array $endpoint): string
+    public static function endpointCacheKey(array $endpoint): string
     {
         // Filter the endpoint array to only include the 'method' and 'path' keys
         $filteredEndpoint = collect($endpoint)->only(['method', 'path'])->toArray();

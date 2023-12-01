@@ -56,6 +56,8 @@ class SpecFile
         $generator = new CodeGenerator($config);
         try {
             $spec = Factory::parse('athena', $specPath);
+            dd('done');
+            // dump('Spec:');
             // dd($spec);
             $result = $generator->run($spec);
 

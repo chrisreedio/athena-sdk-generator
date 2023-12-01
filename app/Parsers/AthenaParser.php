@@ -2,6 +2,7 @@
 
 namespace App\Parsers;
 
+use App\Classes\RequestNameGenerator;
 use cebe\openapi\Reader;
 use cebe\openapi\ReferenceContext;
 use cebe\openapi\spec\OpenApi;
@@ -18,15 +19,22 @@ use Crescat\SaloonSdkGenerator\Data\Generator\Parameter;
 use Crescat\SaloonSdkGenerator\Parsers\OpenApiParser;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
+use function array_slice;
 use function Laravel\Prompts\{info, warning, error, table};
 use function collect;
+use function json_encode;
 use function realpath;
 use function str_replace;
 use function substr_replace;
 use function trim;
+use const JSON_PRETTY_PRINT;
+use const JSON_UNESCAPED_SLASHES;
 
 class AthenaParser extends OpenApiParser
 {
+    public array $paths = [];
+    public array $endpoints = [];
+
     public static function build($content): self
     {
         return new self(
@@ -38,6 +46,20 @@ class AthenaParser extends OpenApiParser
 
     public function parse(): ApiSpecification
     {
+        // Generate list of paths
+        $paths = $this->parseItems($this->openApi->paths);
+
+        // Now we need to scan this list of endpoints and ensure that there is a cached OpenAI ClassName for each one
+
+        // dump('paths: ');
+        $paths = Arr::flatten($paths, 1);
+        // echo(json_encode($paths, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n");
+        // $paths = array_slice($paths, 0, 15);
+        $response = RequestNameGenerator::collection($paths);
+        // dd($response);
+        table(['Method', 'Path', 'Summary', 'Request Class Name'], $response);
+        dd('done');
+
         return new ApiSpecification(
             name: $this->openApi->info->title,
             description: $this->openApi->info->description,
@@ -52,54 +74,75 @@ class AthenaParser extends OpenApiParser
     protected function parseItems(Paths $items): array
     {
         $requests = [];
-
         $tableData = [];
         $paths = [];
-        $category = null;
+        // $category = null;
         // Find the category from the first item - strip off /v1/ then the next part of the url is the category
 
         foreach ($items as $path => $item) {
             // info('Athena Parser - path: ' . $path)
-            if (!$category) {
-                // Get the category by stripping off the first two parts of the URL and everything after the 3rd segment
-                $category = Str::of($path)
-                    ->replace('/v1/{practiceid}/', '')
-                    ->explode('/')
-                    ->first();
-            }
-            if ($item instanceof PathItem) {
-                foreach ($item->getOperations() as $method => $operation) {
-                    // TODO: variables for the path
-                    $trimmedPath = str_replace('/v1/{practiceid}', '', $path);
-                    $paths[] = ['method' => $method, 'path' => $trimmedPath, 'summary' => $operation->summary];
-                    $tableData[] = [
-                        "<fg=magenta>$method</>",
-                        $trimmedPath,
-                        // $path,
-                        "<fg=bright-magenta>{$operation->operationId}</>",
-                        // "<fg=green>{$this->getClassName($operation)}</>",
-                        // "<fg=green>{$this->getClassName($trimmedPath)}</>",
-                        "<fg=green>{$operation->summary}</>",
-                    ];
-
-                    // $requests[] = $this->parseEndpoint($operation, $this->mapParams($item->parameters, 'path'), $path, $method);
-                    $requests[] = $this->parseEndpoint($operation, $this->mapParams($item->parameters, 'path'), $trimmedPath, $method);
-                    break;
-                }
-            }
+            // if (!$category) {
+            //     // Get the category by stripping off the first two parts of the URL and everything after the 3rd segment
+            //     $category = Str::of($path)
+            //         ->replace('/v1/{practiceid}/', '')
+            //         ->explode('/')
+            //         ->first();
+            // }
+            $trimmedPath = str_replace('/v1/{practiceid}', '', $path);
+            $paths[] = $this->parseItem($trimmedPath, $item);
+            // if ($item instanceof PathItem) {
+            //     foreach ($item->getOperations() as $method => $operation) {
+            //         $trimmedPath = str_replace('/v1/{practiceid}', '', $path);
+            //         $paths[] = ['method' => $method, 'path' => $trimmedPath, 'summary' => $operation->summary];
+            //         // $tableData[] = [
+            //         //     "<fg=magenta>$method</>",
+            //         //     $trimmedPath,
+            //         //     // $path,
+            //         //     // "<fg=bright-magenta>{$operation->operationId}</>",
+            //         //     // "<fg=green>{$this->getClassName($operation)}</>",
+            //         //     // "<fg=green>{$this->getClassName($trimmedPath)}</>",
+            //         //     "<fg=green>{$operation->summary}</>",
+            //         // ];
+            //
+            //         // $requests[] = $this->parseEndpoint($operation, $this->mapParams($item->parameters, 'path'), $path, $method);
+            //         $requests[] = $this->parseEndpoint($operation, $this->mapParams($item->parameters, 'path'), $trimmedPath, $method);
+            //         break;
+            //     }
+            // }
         }
 
-        table([
-            'Method',
-            'Path',
-            'Original Operation ID',
-            // 'Custom Request Name'
-            'Summary',
-        ], $tableData);
+        // table([
+        //     'Method',
+        //     'Path',
+        //     // 'Original Operation ID',
+        //     // 'Custom Request Name'
+        //     'Summary',
+        // ], $tableData);
         // info("Paths: \n" . collect($paths)->join("\n"));
-        echo(json_encode($paths, JSON_PRETTY_PRINT) . "\n");
+        return $paths;
+    }
 
-        return $requests;
+    protected function parseItem(string $path, PathItem $item): array
+    {
+        $paths = [];
+        foreach ($item->getOperations() as $method => $operation) {
+            $paths[] = ['method' => $method, 'path' => $path, 'summary' => $operation->summary];
+            // $tableData[] = [
+            //     "<fg=magenta>$method</>",
+            //     $trimmedPath,
+            //     // $path,
+            //     // "<fg=bright-magenta>{$operation->operationId}</>",
+            //     // "<fg=green>{$this->getClassName($operation)}</>",
+            //     // "<fg=green>{$this->getClassName($trimmedPath)}</>",
+            //     "<fg=green>{$operation->summary}</>",
+            // ];
+
+            // $requests[] = $this->parseEndpoint($operation, $this->mapParams($item->parameters, 'path'), $path, $method);
+            // TODO - Re-enable this and move it to a generateEndpoint function
+            // $this->endpoints[] = $this->parseEndpoint($operation, $this->mapParams($item->parameters, 'path'), $path, $method);
+            // break; // TODO - Remove this!
+        }
+        return $paths;
     }
 
     protected function parseEndpoint(Operation $operation, $pathParams, string $path, string $method): ?Endpoint
@@ -170,7 +213,6 @@ class AthenaParser extends OpenApiParser
 
         // return Str::studly($operationId);
     }
-
 
 
 }
