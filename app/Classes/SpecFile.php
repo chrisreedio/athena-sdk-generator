@@ -112,16 +112,15 @@ class SpecFile
             mkdir(dirname($outputFullPath), recursive: true);
         }
 
-        if (file_exists($outputFullPath)) {// && !$this->option('force')) {
-            // warning("File already exists: $outputFullPath");
-
-            return;
-        }
+        // if (file_exists($outputFullPath)) {// && !$this->option('force')) {
+        // warning("File already exists: $outputFullPath");
+        // return;
+        // }
 
         if (file_put_contents($outputFullPath, (string)$file) === false) {
             error("Failed to write: $outputFullPath");
         } // else {
-            // $this->line("- Created: $outputFullPath");
+        // $this->line("- Created: $outputFullPath");
         // }
     }
 }

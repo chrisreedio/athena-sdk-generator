@@ -186,29 +186,45 @@ class AthenaParser extends OpenApiParser
             $bodyParams = collect($schema->properties)
                 ->map(function ($property, $key) use ($requiredFields) {
                     $subProperties = null;
-                    if ($property->type === Type::OBJECT) {
-                        $subProperties = collect($property->properties)
-                            ->map(function ($subProperty, $subKey) use ($requiredFields) {
-                                if ($subProperty->type === Type::OBJECT) {
-                                    alert('FOUND A NESTED OBJECT!');
-                                    dd($subKey);
-                                }
-                                return [
-                                    'name' => $subKey,
-                                    'type' => $subProperty->type,
-                                    'nullable' => !in_array($subKey, $requiredFields ?? []),
-                                    'description' => $subProperty->description,
-                                ];
-                            })
-                            ->values()->all();
-                    }
-                    return array_filter([
-                        'name' => $key,
-                        'type' => $property->type,
-                        'nullable' => !in_array($key, $requiredFields ?? []),
-                        'properties' => $subProperties,
-                        'description' => $property->description,
-                    ]);
+                    // Type overrides
+                    $propertyType = match($property->type) {
+                        Type::OBJECT => Type::ARRAY,
+                        Type::INTEGER => 'int',
+                        Type::BOOLEAN => 'bool',
+                        default => $property->type,
+                    };
+
+                    // Handle nested properties / objects
+                    // if ($property->type === Type::OBJECT) {
+                    //     $subProperties = collect($property->properties)
+                    //         ->map(function ($subProperty, $subKey) use ($requiredFields) {
+                    //             if ($subProperty->type === Type::OBJECT) {
+                    //                 alert('FOUND A NESTED OBJECT!');
+                    //                 dd($subKey);
+                    //             }
+                    //             return [
+                    //                 'name' => $subKey,
+                    //                 'type' => $subProperty->type,
+                    //                 'nullable' => !in_array($subKey, $requiredFields ?? []),
+                    //                 'description' => $subProperty->description,
+                    //             ];
+                    //         })
+                    //         ->values()->all();
+                    // }
+                    return new Parameter(
+                        type: $propertyType,
+                        nullable: !in_array($key, $requiredFields ?? []),
+                        name: $key,
+                        // 'properties' => $subProperties,
+                        description: $property->description,
+                    );
+                    // return array_filter([
+                    //     'name' => $key,
+                    //     'type' => $property->type,
+                    //     'nullable' => !in_array($key, $requiredFields ?? []),
+                    //     // 'properties' => $subProperties,
+                    //     'description' => $property->description,
+                    // ]);
                 })
                 ->values()->all();
             // dump($bodyParams);

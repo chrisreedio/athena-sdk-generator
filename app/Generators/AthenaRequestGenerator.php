@@ -44,7 +44,7 @@ class AthenaRequestGenerator extends ResourceGenerator
     protected function generateRequestClass(Endpoint $endpoint): PhpFile
     {
         $resourceName = NameHelper::resourceClassName($endpoint->collection ?: $this->config->fallbackResourceName);
-        dump('Endpoint: ' . $endpoint->name);
+        // info('Endpoint: ' . $endpoint->name);
         $className = NameHelper::requestClassName($endpoint->name);
 
         $classType = new ClassType($className);
@@ -105,8 +105,8 @@ class AthenaRequestGenerator extends ResourceGenerator
         if (! empty($endpoint->bodyParameters)) {
 
             // TODO - Refactor this to allow for 'nested' parameters.
-            alert('Body Parameters');
-            dd($endpoint->bodyParameters);
+            // alert('Body Parameters');
+            // dd($endpoint->bodyParameters);
             $bodyParams = collect($endpoint->bodyParameters)
                 ->reject(fn (Parameter $parameter) => in_array($parameter->name, $this->config->ignoredBodyParams))
                 ->values()
