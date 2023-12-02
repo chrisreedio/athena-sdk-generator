@@ -2,6 +2,7 @@
 
 namespace App\Classes;
 
+use App\Generators\AthenaRequestGenerator;
 use App\Parsers\AthenaParser;
 use Crescat\SaloonSdkGenerator\CodeGenerator;
 use Crescat\SaloonSdkGenerator\Data\Generator\Config;
@@ -15,7 +16,7 @@ use function collect;
 use function dirname;
 use function file_exists;
 use function file_put_contents;
-use function Laravel\Prompts\{info, warning, error};
+use function Laravel\Prompts\{info, intro, warning, error};
 use function ltrim;
 use function mkdir;
 use function str_replace;
@@ -48,16 +49,17 @@ class SpecFile
             resourceNamespaceSuffix: 'Resource',
             requestNamespaceSuffix: 'Requests',
             dtoNamespaceSuffix: 'Dto', // Replace with your desired SDK name
-            ignoredQueryParams: ['limit', 'offset'] // Ignore params used for pagination
+            ignoredQueryParams: ['limit', 'offset', 'practiceid'] // Ignore params used for pagination
         );
         // Register our custom parser
         Factory::registerParser('athena', AthenaParser::class);
-        // $generator = new CodeGenerator($config, requestGenerator: new AthenaRequestGenerator($config));
-        $generator = new CodeGenerator($config);
+        $generator = new CodeGenerator($config, requestGenerator: new AthenaRequestGenerator($config));
+        // $generator = new CodeGenerator($config);
         try {
             $spec = Factory::parse('athena', $specPath);
             // dd('done');
             // dump('Spec:');
+            intro('Done parsing spec file. Generating SDK...');
             // dd($spec);
             $result = $generator->run($spec);
 

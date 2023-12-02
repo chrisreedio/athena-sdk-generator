@@ -5,8 +5,6 @@ namespace App\Generators;
 use Crescat\SaloonSdkGenerator\Data\Generator\ApiSpecification;
 use Crescat\SaloonSdkGenerator\Data\Generator\Endpoint;
 use Crescat\SaloonSdkGenerator\Data\Generator\Parameter;
-use Crescat\SaloonSdkGenerator\Contracts\Generator;
-use Crescat\SaloonSdkGenerator\Generators\RequestGenerator;
 use Crescat\SaloonSdkGenerator\Generators\ResourceGenerator;
 use Crescat\SaloonSdkGenerator\Helpers\MethodGeneratorHelper;
 use Crescat\SaloonSdkGenerator\Helpers\NameHelper;
@@ -25,6 +23,7 @@ use Crescat\SaloonSdkGenerator\Data\Generator\Config;
 use function collect;
 use function dump;
 use function in_array;
+use function Laravel\Prompts\alert;
 use function sprintf;
 
 class AthenaRequestGenerator extends ResourceGenerator
@@ -36,7 +35,7 @@ class AthenaRequestGenerator extends ResourceGenerator
 
         foreach ($specification->endpoints as $endpoint) {
             $classes[] = $this->generateRequestClass($endpoint);
-            break;
+            // break; // TODO - Remove this break
         }
 
         return $classes;
@@ -104,6 +103,10 @@ class AthenaRequestGenerator extends ResourceGenerator
 
         // Priority 2. - Body Parameters
         if (! empty($endpoint->bodyParameters)) {
+
+            // TODO - Refactor this to allow for 'nested' parameters.
+            alert('Body Parameters');
+            dd($endpoint->bodyParameters);
             $bodyParams = collect($endpoint->bodyParameters)
                 ->reject(fn (Parameter $parameter) => in_array($parameter->name, $this->config->ignoredBodyParams))
                 ->values()

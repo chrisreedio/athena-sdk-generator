@@ -20,8 +20,9 @@ use Crescat\SaloonSdkGenerator\Parsers\OpenApiParser;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
+use function array_filter;
 use function array_slice;
-use function Laravel\Prompts\{info, warning, error, table};
+use function Laravel\Prompts\{alert, intro, outro, info, warning, error, table};
 use function collect;
 use function json_encode;
 use function realpath;
@@ -170,22 +171,78 @@ class AthenaParser extends OpenApiParser
         $className = Cache::get($classCacheKey);
 
         // dump('Path: ' . $trimmedPath);
+        // dump('Path: ' . $path);
         // dump('Cache Key: ' . $classCacheKey);
         // dump('Class Name: ' . $className);
-        info("Endpoint: [$method] $path = " . ($className ?? ''));
+        // info("Endpoint: [$method] $path = " . ($className ?? ''));
+        // info('Operation ID: ' . $operation->operationId);
+        $bodyParams = [];
+        if ($operation->requestBody?->content) {
+            // alert('Body Content Detected!');
+            $schema = $operation->requestBody->content['application/x-www-form-urlencoded']->schema;
+            // extract out the type, required, and properties from the schema
+            $schemaType = $schema->type;
+            $requiredFields = $schema->required;
+            $bodyParams = collect($schema->properties)
+                ->map(function ($property, $key) use ($requiredFields) {
+                    $subProperties = null;
+                    if ($property->type === Type::OBJECT) {
+                        $subProperties = collect($property->properties)
+                            ->map(function ($subProperty, $subKey) use ($requiredFields) {
+                                if ($subProperty->type === Type::OBJECT) {
+                                    alert('FOUND A NESTED OBJECT!');
+                                    dd($subKey);
+                                }
+                                return [
+                                    'name' => $subKey,
+                                    'type' => $subProperty->type,
+                                    'nullable' => !in_array($subKey, $requiredFields ?? []),
+                                    'description' => $subProperty->description,
+                                ];
+                            })
+                            ->values()->all();
+                    }
+                    return array_filter([
+                        'name' => $key,
+                        'type' => $property->type,
+                        'nullable' => !in_array($key, $requiredFields ?? []),
+                        'properties' => $subProperties,
+                        'description' => $property->description,
+                    ]);
+                })
+                ->values()->all();
+            // dump($bodyParams);
+        }
+
+        $augmentedPathParams = $pathParams + $this->mapParams($operation->parameters, 'path');
+        // dump('Augmented Path Params: ', $augmentedPathParams);
+        $filteredPathParams = collect($augmentedPathParams)
+            ->filter(function ($param) {
+                return $param->name !== 'practiceid';
+            })
+            ->toArray();
+
+        // Build the path segments
+        $pathSegments = Str::of($path)
+            ->remove('/v1/{practiceid}')
+            ->replace('{', ':')
+            ->remove('}')
+            ->trim('/')
+            ->explode('/')
+            ->toArray();
 
         return new Endpoint(
             // name: trim($operation->operationId ?: $operation->summary ?: ''),
             name: trim($className ?? ''),
             method: Method::parse($method),
-            pathSegments: Str::of($path)->replace('{', ':')->remove('}')->trim('/')->explode('/')->toArray(),
+            pathSegments: $pathSegments,
             collection: $operation->tags[0] ?? null, // In the real-world, people USUALLY only use one tag...
             response: null, // TODO: implement "definition" parsing
             description: $operation->description,
             queryParameters: $this->mapParams($operation->parameters, 'query'),
             // TODO: Check if this differs between spec versions
-            pathParameters: $pathParams + $this->mapParams($operation->parameters, 'path'),
-            bodyParameters: [], // TODO: implement "definition" parsing
+            pathParameters: $filteredPathParams,
+            bodyParameters: $bodyParams,//[], // TODO: implement "definition" parsing
         );
     }
 
