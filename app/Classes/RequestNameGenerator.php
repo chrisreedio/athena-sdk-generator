@@ -52,8 +52,8 @@ class RequestNameGenerator
             ];
         })->toArray();
 
-        info('Requested Endpoints: ');
-        table(['Method', 'Path', 'Summary', 'Cached Class Name'], $endPointStatuses);
+        // info('Requested Endpoints: ');
+        // table(['Method', 'Path', 'Summary', 'Cached Class Name'], $endPointStatuses);
 
         // info('Filtering out endpoints that are cached...');
         [$cachedEndpoints, $unknownEndpoints] = collect($endpoints)->partition(function ($endpoint) {
@@ -77,7 +77,7 @@ class RequestNameGenerator
 
         $unknownCount = $unknownEndpoints->count();
         warning($unknownCount . ' ' . Str::plural('endpoint', $unknownCount) . ' are not cached. We\'ll need to query OpenAI.');
-        // table(['Method', 'Path', 'Summary'], $unknownEndpoints->all());
+        table(['Method', 'Path', 'Summary'], $unknownEndpoints->all());
 
         $response = [];
         // Query OpenAI
@@ -239,6 +239,59 @@ class RequestNameGenerator
         //     'Include a response item for every item in the input array.',
         //     'The output should be an array of endpoint objects.',
         // ];
+
+        // $promptParts = [
+        //     'Transform the provided JSON array of API endpoints into PHP class names using the StudlyCaps convention. Apply these rules:',
+        //     'Class names must be concise and directly relate to the endpoint function.',
+        //     'Use "List" to prefix class names when the endpoint retrieves multiple items, replacing "Get".',
+        //     'For creating data, use "Create"; for single-item retrieval, use "Get"; for updates, use "Update"; for deletions, use "Delete".',
+        //     'Return the output as a JSON array. Ensure that each element contains only the fields \'method\', \'path\', and \'class\'.',
+        //     'Always enclose the output within an array, even if it contains only one object.',
+        //     'The output should include a class name for each endpoint in the input array to ensure completeness.',
+        //     'Consistently apply a clear naming convention:',
+        //     '- Use "List" as a prefix for endpoints returning collections.',
+        //     '- Use "Get" as a prefix for endpoints returning a single item.',
+        //     '- Use "Create" for POST requests, "Update" for PATCH/PUT requests, and "Delete" for DELETE requests.',
+        //     'Ensure systematic transformation for uniform naming across all endpoints.',
+        //     'The output should ALWAYS start with a square bracket "[" and end with a square bracket "]"',
+        //     'Below is an example of the expected JSON output format when multiple items are present:',
+        //     'Example Output:',
+        //     '[',
+        //     '    {',
+        //     '        "method": "get",',
+        //     '        "path": "/chart/encounter/{encounterid}/eyecare/visualacuity",',
+        //     '        "class": "GetEncounterVisualAcuity"',
+        //     '    },',
+        //     '    {',
+        //     '        "method": "get",',
+        //     '        "path": "/chart/encounter/{encounterid}/eyecare/intraocularpressure",',
+        //     '        "class": "GetEncounterIntraocularPressure"',
+        //     '    },',
+        //     '    // ... other items ...',
+        //     ']',
+        //     'Ensure the final output strictly follows this array structure, regardless of the number of items processed.',
+        // ];
+
+        // $promptParts = [
+        //     'For a JSON array of API endpoints, create PHP class names in StudlyCaps that follow these rules:',
+        //     'Prefix "List" for multiple item retrieval, "Get" for single item, "Create" for POST, "Update" for PATCH/PUT, and "Delete" for DELETE.',
+        //     'Output as a JSON array with \'method\', \'path\', and \'class\' for each endpoint.',
+        //     'Always return an array, even for a single endpoint object.',
+        //     'Example output for multiple endpoints:',
+        //     '    [' .
+        //     '        {' .
+        //     '            "method": "get",' .
+        //     '            "path": "/chart/encounter/{encounterid}/eyecare/visualacuity",' .
+        //     '            "class": "GetEncounterVisualAcuity"' .
+        //     '        },' .
+        //     '        {' .
+        //     '            "method": "get",' .
+        //     '            "path": "/chart/encounter/{encounterid}/eyecare/intraocularpressure",' .
+        //     '            "class": "GetEncounterIntraocularPressure"' .
+        //     '        },' .
+        //     '    ]',
+        // ];
+
         $promptParts = [
             'For the given JSON array of API endpoints, generate PHP class names in StudlyCaps format according to the following rules:',
             'Use concise names that clearly indicate the endpoint\'s purpose.',
@@ -253,6 +306,7 @@ class RequestNameGenerator
             '- PATCH or PUT endpoints should start with "Update".',
             '- DELETE endpoints should begin with "Delete".',
             'The naming convention should be uniform across all endpoints to ensure consistency.',
+            'The root key should be \'endpoints\' that has a value of the aforementioned response objects.',
             'Under no circumstances should you just start printing endless new lines.'
         ];
 

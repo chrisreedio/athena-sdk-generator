@@ -21,6 +21,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use function array_filter;
+use function array_key_exists;
 use function array_slice;
 use function Laravel\Prompts\{alert, intro, outro, info, warning, error, table};
 use function collect;
@@ -179,7 +180,19 @@ class AthenaParser extends OpenApiParser
         $bodyParams = [];
         if ($operation->requestBody?->content) {
             // alert('Body Content Detected!');
-            $schema = $operation->requestBody->content['application/x-www-form-urlencoded']->schema;
+            if (!array_key_exists('application/x-www-form-urlencoded', $operation->requestBody->content)
+                && !array_key_exists('multipart/form-data', $operation->requestBody->content)) {
+                // dump($operation->requestBody->content);
+                error("[$method] $trimmedPath - Body Content type is unknown!");
+                dd('Keys: ', array_keys($operation->requestBody->content));
+            }
+            $bodyContent = $operation->requestBody->content;
+            if (array_key_exists('application/x-www-form-urlencoded', $bodyContent)) {
+                $bodyContent = $bodyContent['application/x-www-form-urlencoded'];
+            } else {
+                $bodyContent = $bodyContent['multipart/form-data']; // TODO - May need more types?
+            }
+            $schema = $bodyContent->schema;
             // extract out the type, required, and properties from the schema
             $schemaType = $schema->type;
             $requiredFields = $schema->required;
