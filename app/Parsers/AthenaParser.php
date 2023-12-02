@@ -53,7 +53,7 @@ class AthenaParser extends OpenApiParser
 
         $response = RequestNameGenerator::collection($paths);
         // dd($response);
-        table(['Method', 'Path', 'Summary', 'Request Class Name'], $response);
+        // table(['Method', 'Path', 'Summary', 'Request Class Name'], $response);
 
         // Now we need to scan this list of endpoints and ensure that there is a cached OpenAI ClassName for each one
         $endpoints = $this->parseEndpoints($this->openApi->paths);

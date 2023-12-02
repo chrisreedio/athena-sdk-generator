@@ -71,7 +71,7 @@ class RequestNameGenerator
         }
 
         if ($unknownEndpoints->isEmpty()) {
-            info('All endpoints are cached. No need to query OpenAI.');
+            // info('All endpoints are cached. No need to query OpenAI.');
             return $cachedEndpoints;
         }
 

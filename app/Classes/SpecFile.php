@@ -58,35 +58,35 @@ class SpecFile
         // $generator = new CodeGenerator($config);
         try {
             $spec = Factory::parse('athena', $specPath);
-            intro('Done parsing spec file. Generating SDK...');
+            // intro('Done parsing spec file. Generating SDK...');
             $result = $generator->run($spec);
-            info('SDK Generated Successfully! ✨ Now writing files...');
+            // info('SDK Generated Successfully! ✨ Now writing files...');
 
             // Generated Connector Class
-            intro('Generating Connector Class...');
-            note("Generating: " . static::colorPath($result->connectorClass));
-            static::dumpToFile($result->connectorClass);
+            // intro('Generating Connector Class...');
+            // note("Generating: " . static::colorPath($result->connectorClass));
+            // static::dumpToFile($result->connectorClass);
             // dd($result->connectorClass);
 
             // Generated Base Resource Class
-            intro('Generating Base Resource Class...');
-            note("Generating: " . static::colorPath($result->resourceBaseClass));
-            static::dumpToFile($result->resourceBaseClass);
+            // intro('Generating Base Resource Class...');
+            // note("Generating: " . static::colorPath($result->resourceBaseClass));
+            // static::dumpToFile($result->resourceBaseClass);
 
             // Generated Resource Classes
-            intro('Generating Resource Classes...');
-            foreach ($result->resourceClasses as $resourceClass) {
-                note("Generating: " . static::colorPath($resourceClass));
-                static::dumpToFile($resourceClass);
-            }
+            // intro('Generating Resource Classes...');
+            // foreach ($result->resourceClasses as $resourceClass) {
+            //     note("Generating: " . static::colorPath($resourceClass));
+            //     static::dumpToFile($resourceClass);
+            // }
 
             // Generated Request Classes
-            intro('Generating Request Classes...');
+            // intro('Generating Request Classes...');
             foreach ($result->requestClasses as $requestClass) {
                 note("Generating: " . static::colorPath($requestClass));
                 static::dumpToFile($requestClass);
             }
-            info('🎉 All files written successfully! 🎉');
+            // info('🎉 All files written successfully! 🎉');
 
         } catch (ParserNotRegisteredException $e) {
             error("Parser not registered: {$e->getMessage()}");

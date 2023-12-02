@@ -19,7 +19,7 @@ use Illuminate\Support\Str;
 use LaravelZero\Framework\Commands\Command;
 use Nette\PhpGenerator\PhpFile;
 use function basename;
-use function Laravel\Prompts\{info, warning, error};
+use function Laravel\Prompts\{info, intro, warning, error};
 use function dd;
 use function dump;
 use function file_exists;
@@ -107,6 +107,7 @@ class ParseSpec extends Command
         foreach ($files as $file) {
             $curPath = $file->getRelativePathname();
             if (Str::endsWith($curPath, '.json')) {
+                intro(explode('athena_openapi_specs/', $file->getRealPath())[1]);
                 // $fullSpecPath = $specPath . DIRECTORY_SEPARATOR . $file;
                 // $fullSpecPath = $file->getPath() . DIRECTORY_SEPARATOR . $curPath;
                 $fullSpecPath = $file->getPath() . DIRECTORY_SEPARATOR . $curPath;
