@@ -14,11 +14,13 @@ use Illuminate\Support\Str;
 use Nette\PhpGenerator\PhpFile;
 use function collect;
 use function dirname;
+use function explode;
 use function file_exists;
 use function file_put_contents;
-use function Laravel\Prompts\{info, intro, warning, error};
+use function Laravel\Prompts\{info, intro, note, progress, warning, error};
 use function ltrim;
 use function mkdir;
+use function split;
 use function str_replace;
 use const DIRECTORY_SEPARATOR;
 
@@ -64,29 +66,30 @@ class SpecFile
             $result = $generator->run($spec);
 
             // Generated Connector Class
-            echo "Generated Connector Class: " . Utils::formatNamespaceAndClass($result->connectorClass) . "\n";
+            intro('Generating Connector Class...');
+            note("Generating: " . static::colorPath($result->connectorClass));
             static::dumpToFile($result->connectorClass);
             // dd($result->connectorClass);
 
             // Generated Base Resource Class
-            echo "Generated Base Resource Class: " . Utils::formatNamespaceAndClass($result->resourceBaseClass) . "\n";
+            intro('Generating Base Resource Class...');
+            note("Generating: " . static::colorPath($result->resourceBaseClass));
             static::dumpToFile($result->resourceBaseClass);
 
             // Generated Resource Classes
+            intro('Generating Resource Classes...');
             foreach ($result->resourceClasses as $resourceClass) {
-                echo "Generated Resource Class: " . Utils::formatNamespaceAndClass($resourceClass) . "\n";
+                note("Generating: " . static::colorPath($resourceClass));
                 static::dumpToFile($resourceClass);
             }
 
             // Generated Request Classes
-            $i = 0;
+            intro('Generating Request Classes...');
             foreach ($result->requestClasses as $requestClass) {
-                // info("Generated Request Class: " . Utils::formatNamespaceAndClass($requestClass));
-                // dump($requestClass->getClasses());
+                note("Generating: " . static::colorPath($requestClass));
                 static::dumpToFile($requestClass);
-                // if ($i++ > 0)
-                //     break;
             }
+
         } catch (ParserNotRegisteredException $e) {
             error("Parser not registered: {$e->getMessage()}");
 
@@ -94,6 +97,12 @@ class SpecFile
         }
 
         return true;
+    }
+
+    private static function colorPath(PhpFile $file): string
+    {
+        [$namespace, $class] = explode('@', Utils::formatNamespaceAndClass($file));
+        return "<fg=green>$namespace</>@<fg=cyan>$class</>";
     }
 
     protected static function dumpToFile(PhpFile $file): void

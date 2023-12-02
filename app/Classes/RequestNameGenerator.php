@@ -227,21 +227,34 @@ class RequestNameGenerator
         return array_values($response);
     }
 
-    protected static function systemPrompt(): string
+    public static function systemPrompt(): string
     {
+        // $promptParts = [
+        //     'Convert the given JSON array of endpoint objects (consisting of the endpoint\'s method, path, and a summary of what the API endpoint does into a PHP safe studly case name.',
+        //     'Please make the class names as concise as possible.',
+        //     'If the request for fetching a list of items, use the prefix "List" instead of "Get".',
+        //     'Be consistent with the naming conventions. Using words like "Get" instead of "Retrieve".',
+        //     'Use standardized and consistent class prefixes like "Create", "List", "Get", "Update", and "Delete".',
+        //     'The only output fields should be the method, path, and class. Please return JSON output.',
+        //     'Include a response item for every item in the input array.',
+        //     'The output should be an array of endpoint objects.',
+        // ];
         $promptParts = [
-            // 'You are an expert backend engineer that has designed REST APIs for decades.',
-            // 'As a result, you are an expert a categorizing APIs and naming SDK methods.',
-            'Convert the given JSON array of endpoint objects (consisting of the endpoint\'s method, path, and a summary of what the API endpoint does into a PHP safe studly case name.',
-            'Please make the class names as concise as possible.',
-            'If the request for fetching a list of items, use the prefix "List" instead of "Get".',
-            'Be consistent with the naming conventions. Using words like "Get" instead of "Retrieve".',
-            'Use standardized and consistent class prefixes like "Create", "List", "Get", "Update", and "Delete".',
-            'The only output fields should be the method, path, and class. Please return JSON output.',
-            'Include a response item for every item in the input array.',
-            'The output should be an array of endpoint objects.',
-            // 'Do not assign a root key to the output.',
+            'For the given JSON array of API endpoints, generate PHP class names in StudlyCaps format according to the following rules:',
+            'Use concise names that clearly indicate the endpoint\'s purpose.',
+            'Begin class names with "List" if the endpoint retrieves multiple items, replacing "Get".',
+            'Begin class names with "Create", "Get", "Update", or "Delete" to reflect the operation performed.',
+            'The output should be JSON-formatted, including only the \'method\', \'path\', and new \'class\' name for each endpoint.',
+            'Provide a new class name for every endpoint in the input array, ensuring no endpoint is omitted.',
+            'Transformation guidelines:',
+            '- "Get" endpoints returning collections should be prefixed with "List".',
+            '- "Get" endpoints returning a single item should retain the "Get" prefix.',
+            '- POST endpoints should have class names starting with "Create".',
+            '- PATCH or PUT endpoints should start with "Update".',
+            '- DELETE endpoints should begin with "Delete".',
+            'The naming convention should be uniform across all endpoints to ensure consistency.',
         ];
+
         return collect($promptParts)->join("\n");
         // return "You are an expert software analysis assistant. You're an expert a classifying APIs and generating SDKs from API concepts. Convert a given JSON input that is the endpoint's method, path, and a summary of what the API call does. Generate JSON output that is a safe PHP classname for each request. Only include the method, path, and class in the output.";
     }
