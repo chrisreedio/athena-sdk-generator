@@ -87,10 +87,15 @@ class SpecFile
     public function process(): bool
     {
         // info("Parsing Spec File: <fg=yellow>$this->localPath</>");
-        // dd($this->specPath);
         $spec = $this->parseSpec();
 
-        return $this->generateSdk();
+        // intro('Done parsing spec file. Generating SDK...');
+        $code = $this->generateSdk();
+
+        // info('SDK Generated Successfully! ✨ Now writing files...');
+        $this->generateFiles();
+
+        return true;
     }
 
     public function parseSpec(): ?ApiSpecification
@@ -104,29 +109,16 @@ class SpecFile
         return $this->spec;
     }
 
-    protected function generateSdk(): bool
+    protected function generateSdk(): ?GeneratedCode
     {
         if (!$this->spec) {
             error('No spec found. Cannot generate SDK. Run parseSpec() first.');
-            return false;
-        }
-        try {
-            // Register our custom parser
-            Factory::registerParser(self::PARSER, AthenaParser::class);
-            $spec = Factory::parse(self::PARSER, $this->specPath);
-            // intro('Done parsing spec file. Generating SDK...');
-
-            $this->code = $this->generator->run($this->spec);
-            // info('SDK Generated Successfully! ✨ Now writing files...');
-
-
-        } catch (ParserNotRegisteredException $e) {
-            error("Parser not registered: {$e->getMessage()}");
-
-            return false;
+            return null;
         }
 
-        return true;
+        $this->code = $this->generator->run($this->spec);
+
+        return $this->code;
     }
 
     public function generateFiles(): void
