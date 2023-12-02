@@ -90,7 +90,7 @@ class ParseSpec extends Command
         $fullPath = $this->specPath . DIRECTORY_SEPARATOR . $category . DIRECTORY_SEPARATOR . $spec . '.json';
 
         $this->title('Parsing: ' . $spec . ' in category: ' . $category);
-        SpecFile::process($fullPath);
+        SpecFile::make($fullPath)->process();
     }
 
     protected function processCategory($category)
@@ -112,7 +112,7 @@ class ParseSpec extends Command
                 // $fullSpecPath = $file->getPath() . DIRECTORY_SEPARATOR . $curPath;
                 $fullSpecPath = $file->getPath() . DIRECTORY_SEPARATOR . $curPath;
 
-                SpecFile::process($fullSpecPath);
+                SpecFile::make($fullSpecPath)->process();
             }
         }
         return true;

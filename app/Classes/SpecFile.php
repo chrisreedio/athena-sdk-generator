@@ -5,7 +5,9 @@ namespace App\Classes;
 use App\Generators\AthenaRequestGenerator;
 use App\Parsers\AthenaParser;
 use Crescat\SaloonSdkGenerator\CodeGenerator;
+use Crescat\SaloonSdkGenerator\Data\Generator\ApiSpecification;
 use Crescat\SaloonSdkGenerator\Data\Generator\Config;
+use Crescat\SaloonSdkGenerator\Data\Generator\GeneratedCode;
 use Crescat\SaloonSdkGenerator\Exceptions\ParserNotRegisteredException;
 use Crescat\SaloonSdkGenerator\Factory;
 use Crescat\SaloonSdkGenerator\Helpers\Utils;
@@ -13,6 +15,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Nette\PhpGenerator\PhpFile;
 use function collect;
+use function dd;
 use function dirname;
 use function explode;
 use function file_exists;
@@ -26,25 +29,52 @@ use const DIRECTORY_SEPARATOR;
 class SpecFile
 {
     protected static string $namespace = 'ChrisReedIO\\AthenaSDK';
+    // protected Config $config;
+    // Path to the spec file from the root of the spec files
+    protected ?string $localPath = null;
+    public ?string $category = null;
+    public ?string $group = null;
 
-    public static function process(string $fullPath): bool
+    protected CodeGenerator $generator;
+    protected ?ApiSpecification $spec = null;
+    protected ?GeneratedCode $code = null;
+
+    const PARSER = 'athena';
+
+    public function __construct(protected string $specPath, protected ?Config $config = null)
     {
-        // TODO - Replace this magic value
-        $specDir = '/athena_openapi_specs/';
-        $localPath = Str::after($fullPath, $specDir);
-        // info("Parsing Spec File: $localPath");
-
-        if (!file_exists($fullPath)) {
-            error("Spec file not found: $fullPath");
+        if (!file_exists($this->specPath)) {
+            error("Spec file not found: {$this->specPath}");
             return false;
         }
 
-        return static::generateSdk($fullPath);
+        if (!$this->config) {
+            $this->initializeConfig();
+        }
+
+        // Ensure that the Athena parser is registered
+        Factory::registerParser(self::PARSER, AthenaParser::class);
+
+        // Setup our code generator
+        $this->generator = new CodeGenerator($this->config, requestGenerator: new AthenaRequestGenerator($this->config));
+
+        // Calculate the category and group from the spec path
+        // TODO - Replace this magic value
+        $this->localPath = Str::after($this->specPath, '/athena_openapi_specs/');
+        $this->category = Str::of($this->localPath)->before('/')->studly();
+        $this->group = Str::of($this->localPath)->after('/')->replace('.json', '')->studly();
+        // info('Processing: ' . $this->localPath);
+        // info($this->category . ' -> ' . $this->group);
     }
 
-    protected static function generateSdk(string $specPath): bool
+    public static function make(string $specPath): self
     {
-        $config = new Config(
+        return new static($specPath);
+    }
+
+    private function initializeConfig(): void
+    {
+        $this->config = new Config(
             connectorName: 'AthenaConnector',
             namespace: static::$namespace,
             resourceNamespaceSuffix: 'Resource',
@@ -52,41 +82,43 @@ class SpecFile
             dtoNamespaceSuffix: 'Dto', // Replace with your desired SDK name
             ignoredQueryParams: ['limit', 'offset', 'practiceid'] // Ignore params used for pagination
         );
-        // Register our custom parser
-        Factory::registerParser('athena', AthenaParser::class);
-        $generator = new CodeGenerator($config, requestGenerator: new AthenaRequestGenerator($config));
-        // $generator = new CodeGenerator($config);
+    }
+
+    public function process(): bool
+    {
+        // info("Parsing Spec File: <fg=yellow>$this->localPath</>");
+        // dd($this->specPath);
+        $spec = $this->parseSpec();
+
+        return $this->generateSdk();
+    }
+
+    public function parseSpec(): ?ApiSpecification
+    {
         try {
-            $spec = Factory::parse('athena', $specPath);
+            $this->spec = Factory::parse('athena', $this->specPath);
+        } catch (ParserNotRegisteredException $e) {
+            error("Parser not registered: {$e->getMessage()}");
+            $this->spec = null;
+        }
+        return $this->spec;
+    }
+
+    protected function generateSdk(): bool
+    {
+        if (!$this->spec) {
+            error('No spec found. Cannot generate SDK. Run parseSpec() first.');
+            return false;
+        }
+        try {
+            // Register our custom parser
+            Factory::registerParser(self::PARSER, AthenaParser::class);
+            $spec = Factory::parse(self::PARSER, $this->specPath);
             // intro('Done parsing spec file. Generating SDK...');
-            $result = $generator->run($spec);
+
+            $this->code = $this->generator->run($this->spec);
             // info('SDK Generated Successfully! ✨ Now writing files...');
 
-            // Generated Connector Class
-            // intro('Generating Connector Class...');
-            // note("Generating: " . static::colorPath($result->connectorClass));
-            // static::dumpToFile($result->connectorClass);
-            // dd($result->connectorClass);
-
-            // Generated Base Resource Class
-            // intro('Generating Base Resource Class...');
-            // note("Generating: " . static::colorPath($result->resourceBaseClass));
-            // static::dumpToFile($result->resourceBaseClass);
-
-            // Generated Resource Classes
-            // intro('Generating Resource Classes...');
-            // foreach ($result->resourceClasses as $resourceClass) {
-            //     note("Generating: " . static::colorPath($resourceClass));
-            //     static::dumpToFile($resourceClass);
-            // }
-
-            // Generated Request Classes
-            // intro('Generating Request Classes...');
-            foreach ($result->requestClasses as $requestClass) {
-                note("Generating: " . static::colorPath($requestClass));
-                static::dumpToFile($requestClass);
-            }
-            // info('🎉 All files written successfully! 🎉');
 
         } catch (ParserNotRegisteredException $e) {
             error("Parser not registered: {$e->getMessage()}");
@@ -97,6 +129,29 @@ class SpecFile
         return true;
     }
 
+    public function generateFiles(): void
+    {
+        // Generated Connector Class
+        intro('Generating Connector Class...');
+        static::dumpToFile($this->code->connectorClass);
+
+        intro('Generating Base Resource Class...');
+        static::dumpToFile($this->code->resourceBaseClass);
+
+        // Generated Resource Classes
+        intro('Generating Resource Classes...');
+        foreach ($this->code->resourceClasses as $resourceClass) {
+            static::dumpToFile($resourceClass);
+        }
+
+        intro('Generating Request Classes...');
+        foreach ($this->code->requestClasses as $requestClass) {
+            static::dumpToFile($requestClass);
+        }
+        // info('🎉 All files written successfully! 🎉');
+    }
+
+
     private static function colorPath(PhpFile $file): string
     {
         [$namespace, $class] = explode('@', Utils::formatNamespaceAndClass($file));
@@ -105,6 +160,8 @@ class SpecFile
 
     protected static function dumpToFile(PhpFile $file): void
     {
+        note("Generating: " . static::colorPath($file));
+
         $outputRootDir = config('app.output.path');
         // dd($file);
         $outputPath = ltrim(str_replace(static::$namespace, '', Arr::first($file->getNamespaces())->getName()), '\\');

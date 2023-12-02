@@ -82,27 +82,19 @@ class RequestNameGenerator
         $response = [];
         // Query OpenAI
         $response = static::query($unknownEndpoints->all());
-        // dump('Response: ', $response);
 
-        // Cache the returned items
-        // collect($response)->each(function ($item) {
-        //     Cache::put(static::endpointCacheKey($item), $item['class']);
-        // });
+        // Augment the returned data with the original summary
         try {
             $response = collect($response)->map(function ($item) use ($endpoints) {
-                // dump('Caching: ', $item);
                 $item['path'] = stripcslashes($item['path']);
                 $cacheKey = static::endpointCacheKey($item);
-                // dump('Caching: ' . $cacheKey);
                 Cache::put($cacheKey, $item['class']);
-                // dump('Looking for path: ' . $item['path']);
+                // Retrieve the original endpoint from the $endpoints input array
                 $originalEndpoint = collect($endpoints)->firstWhere('path', $item['path']);
-                // dd('Original Endpoint: ', $originalEndpoint);
-                // dd('Path: ' . $item['path'] . ': ' . $summary);
                 return [
                     'method' => $item['method'],
                     'path' => $item['path'],
-                    // Look up the summary in the $endpoints input array
+                    // Use the original summary
                     'summary' => $originalEndpoint['summary'],
                     'class' => $item['class'],
                 ];
@@ -113,7 +105,7 @@ class RequestNameGenerator
         }
         // info('cached endpoints');
         // table(['Method', 'Path', 'Summary', 'Class'], $cachedEndpoints);
-        //
+
         // info('response endpoints');
         // table(['Method', 'Path', 'Summary', 'Class'], $response);
 
@@ -170,11 +162,14 @@ class RequestNameGenerator
 
     private static function executeQuery(OpenAI\Responses\StreamResponse $stream): ?string
     {
+        $startTime = microtime(true);
         try {
+            // Non-streaming version
             // $result = spin(function () use ($client, $chatOptions) {
             //     return $client->chat()->create($chatOptions);
             // }, 'Querying <fg=white>OpenAI</>: <fg=' . $model->getColor() . '>' . $model->getLabel() . '</>. Please wait...');
-            $startTime = microtime(true);
+
+            // Streaming Query
             // info('Querying <fg=white>OpenAI</>: <fg=' . $model->getColor() . '>' . $model->getLabel() . '</>');
             // $stream = $client->chat()->createStreamed($chatOptions);
             $result = '';
@@ -191,18 +186,12 @@ class RequestNameGenerator
             $totalTime = round(microtime(true) - $startTime, 2);
             info('Query took ' . $totalTime . ' seconds');
             return $result;
-
         } catch (\GuzzleHttp\Exception\ConnectException $e) {
-            alert('Error connecting to OpenAI: ' . $e->getMessage());
-            // return [];
+            alert('Error connecting to OpenAI [ConnectionException]: ' . $e->getMessage());
         } catch (\OpenAI\Exceptions\TransporterException $e) {
-            alert('Error querying OpenAI: ' . $e->getMessage());
-            // return [];
+            alert('Error querying OpenAI [TransportException]: ' . $e->getMessage());
         } catch (\Exception $e) {
-            alert('Error querying OpenAI: ' . $e->getMessage());
-            // dd($e);
-            // alert('')
-            // return [];
+            alert('Unknown error querying OpenAI: ' . $e->getMessage());
         }
         return null;
     }
@@ -229,69 +218,6 @@ class RequestNameGenerator
 
     public static function systemPrompt(): string
     {
-        // $promptParts = [
-        //     'Convert the given JSON array of endpoint objects (consisting of the endpoint\'s method, path, and a summary of what the API endpoint does into a PHP safe studly case name.',
-        //     'Please make the class names as concise as possible.',
-        //     'If the request for fetching a list of items, use the prefix "List" instead of "Get".',
-        //     'Be consistent with the naming conventions. Using words like "Get" instead of "Retrieve".',
-        //     'Use standardized and consistent class prefixes like "Create", "List", "Get", "Update", and "Delete".',
-        //     'The only output fields should be the method, path, and class. Please return JSON output.',
-        //     'Include a response item for every item in the input array.',
-        //     'The output should be an array of endpoint objects.',
-        // ];
-
-        // $promptParts = [
-        //     'Transform the provided JSON array of API endpoints into PHP class names using the StudlyCaps convention. Apply these rules:',
-        //     'Class names must be concise and directly relate to the endpoint function.',
-        //     'Use "List" to prefix class names when the endpoint retrieves multiple items, replacing "Get".',
-        //     'For creating data, use "Create"; for single-item retrieval, use "Get"; for updates, use "Update"; for deletions, use "Delete".',
-        //     'Return the output as a JSON array. Ensure that each element contains only the fields \'method\', \'path\', and \'class\'.',
-        //     'Always enclose the output within an array, even if it contains only one object.',
-        //     'The output should include a class name for each endpoint in the input array to ensure completeness.',
-        //     'Consistently apply a clear naming convention:',
-        //     '- Use "List" as a prefix for endpoints returning collections.',
-        //     '- Use "Get" as a prefix for endpoints returning a single item.',
-        //     '- Use "Create" for POST requests, "Update" for PATCH/PUT requests, and "Delete" for DELETE requests.',
-        //     'Ensure systematic transformation for uniform naming across all endpoints.',
-        //     'The output should ALWAYS start with a square bracket "[" and end with a square bracket "]"',
-        //     'Below is an example of the expected JSON output format when multiple items are present:',
-        //     'Example Output:',
-        //     '[',
-        //     '    {',
-        //     '        "method": "get",',
-        //     '        "path": "/chart/encounter/{encounterid}/eyecare/visualacuity",',
-        //     '        "class": "GetEncounterVisualAcuity"',
-        //     '    },',
-        //     '    {',
-        //     '        "method": "get",',
-        //     '        "path": "/chart/encounter/{encounterid}/eyecare/intraocularpressure",',
-        //     '        "class": "GetEncounterIntraocularPressure"',
-        //     '    },',
-        //     '    // ... other items ...',
-        //     ']',
-        //     'Ensure the final output strictly follows this array structure, regardless of the number of items processed.',
-        // ];
-
-        // $promptParts = [
-        //     'For a JSON array of API endpoints, create PHP class names in StudlyCaps that follow these rules:',
-        //     'Prefix "List" for multiple item retrieval, "Get" for single item, "Create" for POST, "Update" for PATCH/PUT, and "Delete" for DELETE.',
-        //     'Output as a JSON array with \'method\', \'path\', and \'class\' for each endpoint.',
-        //     'Always return an array, even for a single endpoint object.',
-        //     'Example output for multiple endpoints:',
-        //     '    [' .
-        //     '        {' .
-        //     '            "method": "get",' .
-        //     '            "path": "/chart/encounter/{encounterid}/eyecare/visualacuity",' .
-        //     '            "class": "GetEncounterVisualAcuity"' .
-        //     '        },' .
-        //     '        {' .
-        //     '            "method": "get",' .
-        //     '            "path": "/chart/encounter/{encounterid}/eyecare/intraocularpressure",' .
-        //     '            "class": "GetEncounterIntraocularPressure"' .
-        //     '        },' .
-        //     '    ]',
-        // ];
-
         $promptParts = [
             'For the given JSON array of API endpoints, generate PHP class names in StudlyCaps format according to the following rules:',
             'Use concise names that clearly indicate the endpoint\'s purpose.',
@@ -317,8 +243,6 @@ class RequestNameGenerator
     public static function endpointCacheKey(array $endpoint): string
     {
         // Filter the endpoint array to only include the 'method' and 'path' keys
-        // $filteredEndpoint = collect($endpoint)->only(['method', 'path'])->toArray();
-        // return config('app.cache.prefix') . ':' . sha1(serialize($filteredEndpoint));
         return config('app.cache.prefix') . ':' . $endpoint['method'] . ':' . $endpoint['path'];
     }
 }
