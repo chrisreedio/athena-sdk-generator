@@ -178,15 +178,15 @@ class RequestNameGenerator
             // info('Querying <fg=white>OpenAI</>: <fg=' . $model->getColor() . '>' . $model->getLabel() . '</>');
             // $stream = $client->chat()->createStreamed($chatOptions);
             $result = '';
-            $result = spin(function () use ($stream, &$result) {
+            // $result = spin(function () use ($stream, &$result) {
                 foreach ($stream as $response) {
                     $chunk = $response->choices[0]->delta->content;
-                    // echo $chunk;
+                    echo $chunk;
                     $result .= $chunk;
                 }
-                return $result;
-                // echo "\n";
-            }, 'Executing AI Query. Please wait...');
+                echo "\n";
+                // return $result;
+            // }, 'Executing AI Query. Please wait...');
 
             $totalTime = round(microtime(true) - $startTime, 2);
             info('Query took ' . $totalTime . ' seconds');
@@ -244,7 +244,7 @@ class RequestNameGenerator
             'Use concise names that clearly indicate the endpoint\'s purpose.',
             'Begin class names with "List" if the endpoint retrieves multiple items, replacing "Get".',
             'Begin class names with "Create", "Get", "Update", or "Delete" to reflect the operation performed.',
-            'The output should be JSON-formatted, including only the \'method\', \'path\', and new \'class\' name for each endpoint.',
+            'The output should be valid JSON, including only the \'method\', \'path\', and new \'class\' name for each endpoint.',
             'Provide a new class name for every endpoint in the input array, ensuring no endpoint is omitted.',
             'Transformation guidelines:',
             '- "Get" endpoints returning collections should be prefixed with "List".',
