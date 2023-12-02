@@ -143,13 +143,6 @@ class SpecFile
         // info('🎉 All files written successfully! 🎉');
     }
 
-
-    private static function colorPath(PhpFile $file): string
-    {
-        [$namespace, $class] = explode('@', Utils::formatNamespaceAndClass($file));
-        return "<fg=green>$namespace</>@<fg=cyan>$class</>";
-    }
-
     protected static function dumpToFile(PhpFile $file): void
     {
         note("Generating: " . static::colorPath($file));
@@ -179,4 +172,11 @@ class SpecFile
         // $this->line("- Created: $outputFullPath");
         // }
     }
+
+    private static function colorPath(PhpFile $file): string
+    {
+        [$namespace, $class] = explode('@', Utils::formatNamespaceAndClass($file));
+        return "<fg=green>$namespace</>@<fg=cyan>$class</>";
+    }
+
 }

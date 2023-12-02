@@ -8,6 +8,7 @@ use App\Generators\AthenaRequestGenerator;
 use App\Parsers\AthenaParser;
 use Crescat\SaloonSdkGenerator\CodeGenerator;
 use Crescat\SaloonSdkGenerator\Data\Generator\Config;
+use Crescat\SaloonSdkGenerator\Data\Generator\GeneratedCode;
 use Crescat\SaloonSdkGenerator\Exceptions\ParserNotRegisteredException;
 use Crescat\SaloonSdkGenerator\Factory;
 use Crescat\SaloonSdkGenerator\Helpers\Utils;
@@ -43,6 +44,8 @@ class ParseSpec extends Command
      */
     protected $description = 'Parse a spec file and generate a test file.';
     protected string $specPath;
+
+    protected GeneratedCode $code;
 
     public function __construct()
     {
