@@ -31,6 +31,8 @@ class TestNameGeneration extends Command
      */
     public function handle(): void
     {
+        info(RequestNameGenerator::systemPrompt());
+        dd('done');
         $endpointData = $this->testData();
 
         // Slice the array to only include the first 2 items

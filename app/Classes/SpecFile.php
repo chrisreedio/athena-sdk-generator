@@ -17,10 +17,9 @@ use function dirname;
 use function explode;
 use function file_exists;
 use function file_put_contents;
-use function Laravel\Prompts\{info, intro, note, progress, warning, error};
+use function Laravel\Prompts\{info, intro, note, outro, progress, warning, error};
 use function ltrim;
 use function mkdir;
-use function split;
 use function str_replace;
 use const DIRECTORY_SEPARATOR;
 
@@ -59,11 +58,9 @@ class SpecFile
         // $generator = new CodeGenerator($config);
         try {
             $spec = Factory::parse('athena', $specPath);
-            // dd('done');
-            // dump('Spec:');
             intro('Done parsing spec file. Generating SDK...');
-            // dd($spec);
             $result = $generator->run($spec);
+            info('SDK Generated Successfully! ✨ Now writing files...');
 
             // Generated Connector Class
             intro('Generating Connector Class...');
@@ -89,6 +86,7 @@ class SpecFile
                 note("Generating: " . static::colorPath($requestClass));
                 static::dumpToFile($requestClass);
             }
+            info('🎉 All files written successfully! 🎉');
 
         } catch (ParserNotRegisteredException $e) {
             error("Parser not registered: {$e->getMessage()}");

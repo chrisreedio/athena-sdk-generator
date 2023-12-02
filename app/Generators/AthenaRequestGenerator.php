@@ -44,9 +44,9 @@ class AthenaRequestGenerator extends ResourceGenerator
     protected function generateRequestClass(Endpoint $endpoint): PhpFile
     {
         $resourceName = NameHelper::resourceClassName($endpoint->collection ?: $this->config->fallbackResourceName);
-        // info('Endpoint: ' . $endpoint->name);
-        $className = NameHelper::requestClassName($endpoint->name);
 
+        $className = NameHelper::requestClassName($endpoint->name);
+        info("Endpoint: {$endpoint->name} - Class Name: $className");
         $classType = new ClassType($className);
 
         $classFile = new PhpFile;

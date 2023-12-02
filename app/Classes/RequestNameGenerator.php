@@ -253,6 +253,7 @@ class RequestNameGenerator
             '- PATCH or PUT endpoints should start with "Update".',
             '- DELETE endpoints should begin with "Delete".',
             'The naming convention should be uniform across all endpoints to ensure consistency.',
+            'Under no circumstances should you just start printing endless new lines.'
         ];
 
         return collect($promptParts)->join("\n");

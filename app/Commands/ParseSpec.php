@@ -96,12 +96,8 @@ class ParseSpec extends Command
     protected function processCategory($category)
     {
         $this->title('Parsing all files in category: ' . $category);
-        $specPath = Cache::get('spec:path');
-        if (!$specPath) {
-            \error('No spec path set.');
-            return false;
-        }
-        $categoryPath = $specPath . DIRECTORY_SEPARATOR . $category;
+
+        $categoryPath = $this->specPath . DIRECTORY_SEPARATOR . $category;
         // dd($categoryPath);
         // $fullSpecPath = $specPath . DIRECTORY_SEPARATOR . $category . '.json';
         // $this->processSpecFile($fullSpecPath);
