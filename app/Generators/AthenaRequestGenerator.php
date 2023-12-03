@@ -5,7 +5,7 @@ namespace App\Generators;
 use Crescat\SaloonSdkGenerator\Data\Generator\ApiSpecification;
 use Crescat\SaloonSdkGenerator\Data\Generator\Endpoint;
 use Crescat\SaloonSdkGenerator\Data\Generator\Parameter;
-use Crescat\SaloonSdkGenerator\Generators\ResourceGenerator;
+use Crescat\SaloonSdkGenerator\Generators\RequestGenerator;
 use Crescat\SaloonSdkGenerator\Helpers\MethodGeneratorHelper;
 use Crescat\SaloonSdkGenerator\Helpers\NameHelper;
 use Crescat\SaloonSdkGenerator\Helpers\Utils;
@@ -26,7 +26,7 @@ use function in_array;
 use function Laravel\Prompts\alert;
 use function sprintf;
 
-class AthenaRequestGenerator extends ResourceGenerator
+class AthenaRequestGenerator extends RequestGenerator
 {
    public function generate(ApiSpecification $specification): PhpFile|array
     {
@@ -46,12 +46,25 @@ class AthenaRequestGenerator extends ResourceGenerator
         $resourceName = NameHelper::resourceClassName($endpoint->collection ?: $this->config->fallbackResourceName);
 
         $className = NameHelper::requestClassName($endpoint->name);
+        // dd($endpoint);
         info("Endpoint: {$endpoint->name} - Class Name: $className");
         $classType = new ClassType($className);
 
         $classFile = new PhpFile;
-        $namespace = $classFile
-            ->addNamespace("{$this->config->namespace}\\{$this->config->requestNamespaceSuffix}\\{$resourceName}");
+        $namespaceParts = [
+            $this->config->namespace,
+            $this->config->requestNamespaceSuffix,
+            null,
+            $resourceName,
+        ];
+        dump('Namespace: ' . $this->config->namespace);
+        dump('Namespace Suffix: ' . $this->config->requestNamespaceSuffix);
+        dump('Resource Name: ' . $resourceName);
+        // $namespaceString = "{$this->config->namespace}\\{$this->config->requestNamespaceSuffix}\\{$resourceName}";
+        $namespaceString = collect(array_filter($namespaceParts))->join('\\');
+        // $namespaceString = collect($namespaceParts)->join('\\');
+        dump('Namespace String: ' . $namespaceString);
+        $namespace = $classFile->addNamespace($namespaceString);
 
         $classType->setExtends(Request::class)
             ->setComment($endpoint->name)

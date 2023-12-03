@@ -20,6 +20,7 @@ use Illuminate\Support\Str;
 use LaravelZero\Framework\Commands\Command;
 use Nette\PhpGenerator\PhpFile;
 use function basename;
+use function explode;
 use function Laravel\Prompts\{info, intro, warning, error};
 use function dd;
 use function dump;
@@ -62,21 +63,24 @@ class ParseSpec extends Command
         }
     }
 
-    public function handle()
+    public function handle(): int
     {
         if (!$this->specPath) {
             return self::FAILURE;
         }
 
         $specScope = $this->argument('spec');
-        $this->info('Generating SDK for Spec Scope: ' . $specScope);
+
+        // Check for the lack of a provided spec scope
         if (is_null($specScope)) {
             $this->processAllCategories();
-        } elseif (Str::contains($specScope, '/')) {
+        } elseif (Str::contains($specScope, '/')) { // Check for a category and group
             $this->processSingleSpecFile($specScope);
-        } else {
+        } else { // We have only a single 'name', which is the category
             $this->processCategory($specScope);
         }
+
+        return self::SUCCESS;
     }
 
     protected function processAllCategories()
@@ -87,37 +91,39 @@ class ParseSpec extends Command
         });
     }
 
+    protected function processCategory($category)
+    {
+        $this->title('Parsing all files in category: ' . $category);
+
+        $categoryPath = $this->specPath . DIRECTORY_SEPARATOR . $category;
+        $files = File::allFiles($categoryPath);
+
+        foreach ($files as $file) {
+            $curPath = $file->getRelativePathname();
+            if (Str::endsWith($curPath, '.json')) {
+                intro(explode('athena_openapi_specs/', $file->getRealPath())[1]);
+                $fullSpecPath = $file->getPath() . DIRECTORY_SEPARATOR . $curPath;
+                // $specFile = SpecFile::make($fullSpecPath)->process();
+                $spec = SpecFile::make($fullSpecPath)->parseSpec();
+                dd($spec);
+            }
+        }
+        return true;
+    }
+
     protected function processSingleSpecFile($specScope)
     {
         [$category, $spec] = explode('/', $specScope);
         $fullPath = $this->specPath . DIRECTORY_SEPARATOR . $category . DIRECTORY_SEPARATOR . $spec . '.json';
 
         $this->title('Parsing: ' . $spec . ' in category: ' . $category);
-        SpecFile::make($fullPath)->process();
+        $specFile = SpecFile::make($fullPath)->process();
+        // $specFile = SpecFile::make($fullPath);
+        // $spec = $specFile->parseSpec();
+        // // dd($spec);
+        // $code = $specFile->generateSdk();
+        // dd($code);
     }
 
-    protected function processCategory($category)
-    {
-        $this->title('Parsing all files in category: ' . $category);
 
-        $categoryPath = $this->specPath . DIRECTORY_SEPARATOR . $category;
-        // dd($categoryPath);
-        // $fullSpecPath = $specPath . DIRECTORY_SEPARATOR . $category . '.json';
-        // $this->processSpecFile($fullSpecPath);
-        $files = File::allFiles($categoryPath);
-        // dd($files);
-        // collect($files)->each(fn ($file) => dump($file->getRelativePathname()));
-        foreach ($files as $file) {
-            $curPath = $file->getRelativePathname();
-            if (Str::endsWith($curPath, '.json')) {
-                intro(explode('athena_openapi_specs/', $file->getRealPath())[1]);
-                // $fullSpecPath = $specPath . DIRECTORY_SEPARATOR . $file;
-                // $fullSpecPath = $file->getPath() . DIRECTORY_SEPARATOR . $curPath;
-                $fullSpecPath = $file->getPath() . DIRECTORY_SEPARATOR . $curPath;
-
-                SpecFile::make($fullSpecPath)->process();
-            }
-        }
-        return true;
-    }
 }
