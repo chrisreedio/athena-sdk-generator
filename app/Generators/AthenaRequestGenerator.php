@@ -9,7 +9,7 @@ use Crescat\SaloonSdkGenerator\Generators\RequestGenerator;
 use Crescat\SaloonSdkGenerator\Helpers\MethodGeneratorHelper;
 use Crescat\SaloonSdkGenerator\Helpers\NameHelper;
 use Crescat\SaloonSdkGenerator\Helpers\Utils;
-use DateTime;
+// use DateTime;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Nette\PhpGenerator\ClassType;
@@ -18,12 +18,16 @@ use Nette\PhpGenerator\PhpFile;
 use Saloon\Contracts\Body\HasBody;
 use Saloon\Enums\Method as SaloonHttpMethod;
 use Saloon\Http\Request;
+use Saloon\Traits\Body\HasFormBody;
 use Saloon\Traits\Body\HasJsonBody;
 use Crescat\SaloonSdkGenerator\Data\Generator\Config;
+use Saloon\Traits\Body\HasMultipartBody;
 use function collect;
+use function dd;
 use function dump;
 use function in_array;
 use function Laravel\Prompts\alert;
+use function Laravel\Prompts\info;
 use function sprintf;
 
 class AthenaRequestGenerator extends RequestGenerator
@@ -34,6 +38,9 @@ class AthenaRequestGenerator extends RequestGenerator
         $classes = [];
 
         foreach ($specification->endpoints as $endpoint) {
+            // dd(array_keys((array)$endpoint));
+            // info("\tGenerating SDK Files for <fg=yellow>{$endpoint->category}</> / <fg=cyan>{$endpoint->group}</>");
+            info("\t<fg=red>{$endpoint->method->name}</> <fg=magenta>{$endpoint->name}</> - <fg=yellow>{$endpoint->pathAsString()}</>");
             $classes[] = $this->generateRequestClass($endpoint);
             // break; // TODO - Remove this break
         }
@@ -47,23 +54,24 @@ class AthenaRequestGenerator extends RequestGenerator
 
         $className = NameHelper::requestClassName($endpoint->name);
         // dd($endpoint);
-        info("Endpoint: {$endpoint->name} - Class Name: $className");
+        // info("Endpoint: {$endpoint->name} - Class Name: $className");
         $classType = new ClassType($className);
 
         $classFile = new PhpFile;
         $namespaceParts = [
             $this->config->namespace,
             $this->config->requestNamespaceSuffix,
-            null,
-            $resourceName,
+            $endpoint->category, // This or resourceName, not both
+            // $resourceName, // This or Category, not both
+            $endpoint->group,
         ];
-        dump('Namespace: ' . $this->config->namespace);
-        dump('Namespace Suffix: ' . $this->config->requestNamespaceSuffix);
-        dump('Resource Name: ' . $resourceName);
+        // dump('Namespace: ' . $this->config->namespace);
+        // dump('Namespace Suffix: ' . $this->config->requestNamespaceSuffix);
+        // dump('Resource Name: ' . $resourceName);
         // $namespaceString = "{$this->config->namespace}\\{$this->config->requestNamespaceSuffix}\\{$resourceName}";
         $namespaceString = collect(array_filter($namespaceParts))->join('\\');
         // $namespaceString = collect($namespaceParts)->join('\\');
-        dump('Namespace String: ' . $namespaceString);
+        // dump('Namespace String: ' . $namespaceString);
         $namespace = $classFile->addNamespace($namespaceString);
 
         $classType->setExtends(Request::class)
@@ -71,16 +79,39 @@ class AthenaRequestGenerator extends RequestGenerator
             ->addComment('')
             ->addComment(Utils::wrapLongLines($endpoint->description ?? ''));
 
-        // TODO: We assume JSON body if post/patch, make these assumptions configurable in the future.
-        if ($endpoint->method->isPost() || $endpoint->method->isPatch()) {
-            $classType
-                ->addImplement(HasBody::class)
-                ->addTrait(HasJsonBody::class);
+        if ($endpoint->bodyContentType) {
+            // dump('body content type: ' . $endpoint->bodyContentType);
+            if ($endpoint->bodyContentType === 'application/x-www-form-urlencoded') {
+                $classType
+                    ->addImplement(HasBody::class)
+                    ->addTrait(HasFormBody::class);
 
-            $namespace
-                ->addUse(HasBody::class)
-                ->addUse(HasJsonBody::class);
+                $namespace
+                    ->addUse(HasBody::class)
+                    ->addUse(HasFormBody::class);
+            } elseif ($endpoint->bodyContentType === 'multipart/form-data') {
+                $classType
+                    ->addImplement(HasBody::class)
+                    ->addTrait(HasMultipartBody::class);
+
+                $namespace
+                    ->addUse(HasBody::class)
+                    ->addUse(HasMultipartBody::class);
+            } else {
+                dd('Unknown body content type: ' . $endpoint->bodyContentType);
+            }
         }
+
+        // TODO: We assume JSON body if post/patch, make these assumptions configurable in the future.
+        // if ($endpoint->method->isPost() || $endpoint->method->isPatch()) {
+        //     $classType
+        //         ->addImplement(HasBody::class)
+        //         ->addTrait(HasJsonBody::class);
+        //
+        //     $namespace
+        //         ->addUse(HasBody::class)
+        //         ->addUse(HasJsonBody::class);
+        // }
 
         $classType->addProperty('method')
             ->setProtected()
@@ -148,7 +179,7 @@ class AthenaRequestGenerator extends RequestGenerator
 
         $namespace
             ->addUse(SaloonHttpMethod::class)
-            ->addUse(DateTime::class)
+            // ->addUse(DateTime::class)
             ->addUse(Request::class)
             ->add($classType);
 

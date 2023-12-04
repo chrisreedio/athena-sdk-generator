@@ -131,11 +131,14 @@ class AthenaParser extends OpenApiParser
                 dd('Keys: ', array_keys($operation->requestBody->content));
             }
             $bodyContent = $operation->requestBody->content;
-            $bodyContent = match (true) {
-                isset($bodyContent['application/x-www-form-urlencoded']) => $bodyContent['application/x-www-form-urlencoded'],
-                isset($bodyContent['multipart/form-data']) => $bodyContent['multipart/form-data'],
-                default => throw new Exception("Unsupported content type")
-            };
+            $bodyContentType = array_keys($bodyContent)[0];
+            // dump('initial body content type: ' . $bodyContentType);
+            $bodyContent = $bodyContent[$bodyContentType];
+            // $bodyContent = match (true) {
+            //     isset($bodyContent['application/x-www-form-urlencoded']) => $bodyContent['application/x-www-form-urlencoded'],
+            //     isset($bodyContent['multipart/form-data']) => $bodyContent['multipart/form-data'],
+            //     default => throw new Exception("Unsupported content type")
+            // };
             $schema = $bodyContent->schema;
             // extract out the type, required, and properties from the schema
             $schemaType = $schema->type;
@@ -179,7 +182,7 @@ class AthenaParser extends OpenApiParser
             ->explode('/')
             ->toArray();
 
-        return new Endpoint(
+        $endpoint = new Endpoint(
         // name: trim($operation->operationId ?: $operation->summary ?: ''),
             name: trim($className ?? ''),
             method: Method::parse($method),
@@ -192,5 +195,8 @@ class AthenaParser extends OpenApiParser
             pathParameters: $filteredPathParams,
             bodyParameters: $bodyParams,//[], // TODO: implement "definition" parsing
         );
+        $endpoint->bodyContentType = $bodyContentType ?? null;
+        // dump('endpoint\'s body content type: ' . $endpoint->bodyContentType);
+        return $endpoint;
     }
 }

@@ -103,9 +103,9 @@ class ParseSpec extends Command
             if (Str::endsWith($curPath, '.json')) {
                 intro(explode('athena_openapi_specs/', $file->getRealPath())[1]);
                 $fullSpecPath = $file->getPath() . DIRECTORY_SEPARATOR . $curPath;
-                // $specFile = SpecFile::make($fullSpecPath)->process();
-                $spec = SpecFile::make($fullSpecPath)->parseSpec();
-                dd($spec);
+                $specFile = SpecFile::make($fullSpecPath)->process();
+                // $spec = SpecFile::make($fullSpecPath)->parseSpec();
+                // dd($spec);
             }
         }
         return true;
